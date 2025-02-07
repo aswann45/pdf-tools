@@ -1,7 +1,8 @@
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
-import filetype  # type: ignore
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, RootModel, computed_field
 
 
 class File(BaseModel):
@@ -16,18 +17,14 @@ class File(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def absolute_path(self) -> Path:
-        return self.path.absolute()
+        return self.path.resolve()
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def type(self) -> str:
         if self.absolute_path.is_dir():
             return "dir"
-        kind = filetype.guess(str(self.absolute_path))
-        if kind is None:
-            return self.path.suffix
-
-        return kind.extension
+        return self.path.suffix.replace(".", "")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -38,3 +35,13 @@ class File(BaseModel):
     @property
     def parent(self) -> Path:
         return self.path.parent
+
+
+class Files(RootModel):
+    root: Sequence[File]
+
+    def __iter__(self) -> Any:
+        return iter(self.root)
+
+    def __getitem__(self, item: Any) -> Any:
+        return self.root[item]
