@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+scripts/build
+
+echo "=> Installing package"
+
+latest_wheel=$(ls dist/*.whl | sed -E 's/.*-([0-9]+\.[0-9]+\.[0-9]+).*$/\1/' | sort -V | tail -1)
+latest_wheel_file=$(ls dist/*.whl | grep -E "$latest_wheel")
+
+pipx install pdf-tools "$latest_wheel_file"
+
+pdf-tools --install-completion
+
+echo "=> Done"
