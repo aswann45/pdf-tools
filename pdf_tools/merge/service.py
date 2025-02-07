@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import typer
 from pypdf import PdfWriter
 
@@ -5,7 +7,7 @@ from pdf_tools.models.files import File
 
 
 def merge_pdfs(
-    files: list[File], output_path_str: str, set_bookmarks: bool = False
+    files: Sequence[File], output_path_str: str, set_bookmarks: bool = False
 ) -> File:
     merger = PdfWriter()
     for file in files:
@@ -24,5 +26,7 @@ def merge_pdfs(
 
     with open(output_path_str, "wb") as output:
         merger.write(output)
+
+    merger.close()
 
     return File.model_validate({"path_str": output_path_str})
