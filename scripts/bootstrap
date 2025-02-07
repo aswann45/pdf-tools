@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+echo "=> Bootstrapping dependencies"
+
+sudo apt update
+sudo apt install libreoffice
+pipx install unoserver --system-site-packages
+
+poetry install
+
+echo "=> Bootstrap complete"

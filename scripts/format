@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+ruff check pdf_tools --select I --fix
+ruff format pdf_tools
+ruff check tests --select I --fix
+ruff format tests
