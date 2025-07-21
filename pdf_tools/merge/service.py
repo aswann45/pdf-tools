@@ -41,7 +41,10 @@ __all__ = [
 
 
 def merge_pdfs(
-    files: Sequence[File], output_path: Path, set_bookmarks: bool = False
+    files: Sequence[File],
+    output_path: Path,
+    set_bookmarks: bool = False,
+    overwrite: bool = False,
 ) -> File:
     """Merge multiple PDF files into a single document on disk.
 
@@ -60,6 +63,8 @@ def merge_pdfs(
         (bookmark) in the resulting file.  The outline title is pulled from
         the corresponding :pyattr:`~pdf_tools.models.files.File.bookmark_name`
         or falls back to :pyattr:`~pdf_tools.models.files.File.name`.
+    overwrite : bool, default ``False``
+        When *True* overwrite output documents if they already exist.
 
     Returns
     -------
@@ -69,8 +74,10 @@ def merge_pdfs(
 
     Raises
     ------
+    FileExistsError
+        If *overwrite* is False and the output path already exists.
     FileNotFoundError
-        If *output_path_str*'s parent directory does not exist.
+        If *output_path*'s parent directory does not exist.
     OSError
         If the underlying OS call fails during write (e.g., permission error).
 
@@ -109,6 +116,13 @@ def merge_pdfs(
         else:
             merger.append(str(file.absolute_path))
 
+    if output_path.exists() and overwrite is False:
+        raise FileExistsError(f"File {output_path} already exists. Exiting.")
+    if output_path.parent.exists() is False:
+        raise FileNotFoundError(
+            f"Output directory {output_path.parent} does not exist. "
+            f"Please create it or choose an existing directory."
+        )
     with open(output_path, "wb") as output:
         merger.write(output)
 

@@ -16,10 +16,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Optional
 
-from typer import Argument
+import typer
 
 from pdf_tools.cli import AsyncTyper
-from pdf_tools.convert.service import convert_file_to_pdf
+from pdf_tools.convert.service import _output_dir_handler, convert_file_to_pdf
 from pdf_tools.models.files import File, Files
 
 cli = AsyncTyper(no_args_is_help=True)
@@ -28,10 +28,15 @@ cli = AsyncTyper(no_args_is_help=True)
 @cli.command()
 def file_to_pdf(
     path: Annotated[
-        str, Argument(help="Path to the input file (Word doc, image, etc.).")
+        str,
+        typer.Argument(help="Path to the input file (Word doc, image, etc.)."),
     ],
+    overwrite_existing: Annotated[
+        bool,
+        typer.Option(help="Overwrite output file if it already exists."),
+    ] = False,
 ) -> File:
-    """Convert *one* document to PDF.
+    """Convert *one* document to PDF and output to the same directory.
 
     Examples
     --------
@@ -40,23 +45,36 @@ def file_to_pdf(
     ```
     """
     file = File.model_validate({"path": path})
-    return convert_file_to_pdf(file)
+    return convert_file_to_pdf(file, overwrite=overwrite_existing)
 
 
 @cli.command()
-def files_to_pdf(
+def files_to_pdfs(
     file_paths: Annotated[
         Optional[list[Path]],
-        Argument(
-            help="One or more input paths. Ignored when --json-file is used."
-        ),
+        typer.Argument(help="Files to convert."),
     ] = None,
     json_file: Annotated[
         Optional[Path],
-        Argument(
+        typer.Option(
             help="Path to a JSON file containing a serialised Files list."
         ),
     ] = None,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--output-dir",
+            "-o",
+            help=(
+                "Directory where the PDFs will be written. "
+                "Defaults to current working directory."
+            ),
+        ),
+    ] = None,
+    overwrite_existing: Annotated[
+        bool,
+        typer.Option(help="Overwrite output files if they already exist."),
+    ] = False,
 ) -> list[File]:
     """Convert many documents to PDFs.
 
@@ -72,6 +90,12 @@ def files_to_pdf(
     pdf-tools convert files-to-pdf --json-file batch.json
     ```
     """
+    if (file_paths is None) == (json_file is None):
+        raise typer.BadParameter(
+            "Provide either file_paths or --json-file, not both."
+        )
+    if output_dir is None:
+        output_dir = Path().cwd()
     files: Sequence[File]
     if json_file is not None:
         with open(json_file) as f:
@@ -80,22 +104,78 @@ def files_to_pdf(
         raise ValueError("Either file_paths or json_file must be provided")
     else:
         files = [File.model_validate({"path": p}) for p in file_paths]
-    return [convert_file_to_pdf(file) for file in files]
+
+    converted: list[File] = []
+    failures: list[Path] = []
+
+    for file in files:
+        try:
+            output_path = _output_dir_handler(file.path, output_dir)
+            converted.append(
+                convert_file_to_pdf(
+                    file, output_path=output_path, overwrite=overwrite_existing
+                )
+            )
+        except (RuntimeError, ValueError, OSError) as ex:
+            failures.append(file.path)
+            typer.secho(f"⚠️  Skipping {file.path}: {ex}", fg="yellow")
+
+    if not converted:
+        raise typer.Exit(code=1)
+
+    typer.secho(
+        f"✅  Converted {len(converted)} file(s); {len(failures)} skipped.",
+        fg="green",
+    )
+    return converted
 
 
 @cli.command()
 def folder_to_pdfs(
-    input_dir_path: Annotated[
+    input_dir: Annotated[
         Path,
-        Argument(help="Directory whose immediate children will be converted."),
+        typer.Argument(
+            help="Directory whose immediate children will be converted."
+        ),
     ],
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            "-o",
+            help="Directory where the PDFs will be written.",
+        ),
+    ],
+    overwrite_existing: Annotated[
+        bool,
+        typer.Option(help="Overwrite output files if they already exist."),
+    ] = False,
 ) -> list[File]:
-    """Convert every supported file in *path_str*.
+    """Convert every supported file in *input_dir_path*.
 
     The scan is **non‑recursive**; it only checks the folder’s first level.
     """
-    folder = Path(input_dir_path)
-    files = [
-        File.model_validate({"path": str(file)}) for file in folder.iterdir()
-    ]
-    return [convert_file_to_pdf(file) for file in files]
+    folder = Path(input_dir)
+    files = [File.model_validate({"path": file}) for file in folder.iterdir()]
+    converted: list[File] = []
+    failures: list[Path] = []
+    for file in files:
+        try:
+            output_path = _output_dir_handler(file.path, output_dir)
+            converted.append(
+                convert_file_to_pdf(
+                    file, output_path=output_path, overwrite=overwrite_existing
+                )
+            )
+        except (RuntimeError, ValueError, OSError) as ex:
+            failures.append(file.path)
+            typer.secho(f"⚠️  Skipping {file.path}: {ex}", fg="yellow")
+
+    if not converted:
+        raise typer.Exit(code=1)
+
+    typer.secho(
+        f"✅  Converted {len(converted)} file(s); {len(failures)} skipped.",
+        fg="green",
+    )
+    return converted

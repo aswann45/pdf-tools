@@ -23,6 +23,7 @@ Wrap it in a thread executor if you need async I/O.
 
 from collections.abc import Sequence
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from pdf_tools.convert.service import convert_file_to_pdf
 from pdf_tools.merge.service import merge_pdfs
@@ -34,7 +35,10 @@ __all__: Sequence[str] = [
 
 
 def convert_and_merge_pdfs(
-    files: Sequence[File], output_path: Path, set_bookmarks: bool = False
+    files: Sequence[File],
+    output_path: Path,
+    set_bookmarks: bool = False,
+    overwrite: bool = False,
 ) -> File:
     """Convert *files* to PDFs (if needed) and merge them into one document.
 
@@ -48,6 +52,8 @@ def convert_and_merge_pdfs(
     set_bookmarks : bool, default ``False``
         When *True*, a top‑level outline (bookmark) is created for each source
         document (mirroring :func:`pdf_tools.merge.service.merge_pdfs`).
+    overwrite : bool, default ``False``
+        When *True* overwrite output documents if they already exist.
 
     Returns
     -------
@@ -70,5 +76,19 @@ def convert_and_merge_pdfs(
     >>> final.name
     'bundle.pdf'
     """
-    files = [convert_file_to_pdf(file) for file in files]
-    return merge_pdfs(files, output_path, set_bookmarks)
+    converted: list[File] = []
+    for file in files:
+        try:
+            with NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
+                tmp_pdf.close()
+                converted.append(
+                    convert_file_to_pdf(file, output_path=Path(tmp_pdf.name)),
+                )
+        except (RuntimeError, ValueError, OSError):
+            continue
+    if not converted:
+        raise ValueError("No files successfully converted. Aborting merge.")
+
+    return merge_pdfs(
+        converted, output_path, set_bookmarks, overwrite=overwrite
+    )

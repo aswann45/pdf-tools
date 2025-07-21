@@ -14,7 +14,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated, Optional
 
-from typer import Argument, Option
+import typer
+from pydantic import ValidationError
 
 from pdf_tools.cli import AsyncTyper
 from pdf_tools.models.files import File, Files
@@ -27,24 +28,40 @@ cli = AsyncTyper(no_args_is_help=True)
 
 @cli.command()
 def convert_and_merge_pdfs(
-    output_path: Annotated[
-        Path, Argument(help="Destination path for the merged PDF.")
-    ],
     file_paths: Annotated[
         Optional[list[Path]],
-        Argument(
+        typer.Argument(
             help="One or more input paths. Ignored when --json-file is used."
         ),
     ] = None,
     json_file: Annotated[
-        Optional[str],
-        Argument(
-            help="Path to a JSON file containing a serialised Files list."
+        Optional[Path],
+        typer.Option(
+            "--json-file",
+            "-j",
+            help="Path to a JSON file containing a serialised Files list.",
+        ),
+    ] = None,
+    output_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--output-path",
+            "-o",
+            help=(
+                "Destination path for the merged PDF. "
+                "Defaults to 'output.pdf' in current directory."
+            ),
         ),
     ] = None,
     set_bookmarks: Annotated[
         bool,
-        Option(help="Create a top-level bookmark for each source document."),
+        typer.Option(
+            help="Create a top-level bookmark for each source document."
+        ),
+    ] = False,
+    overwrite_existing: Annotated[
+        bool,
+        typer.Option(help="Overwrite output files if they already exist."),
     ] = False,
 ) -> None:
     """Convert inputs to PDF, then merge them.
@@ -59,12 +76,35 @@ def convert_and_merge_pdfs(
     pdf-tools process convert-and-merge-pdfs bundle.pdf --json-file batch.json
     ```
     """
+    if (file_paths is None) == (json_file is None):
+        raise typer.BadParameter(
+            "Provide *either* input paths *or* --json-file, not both."
+        )
+    if output_path is None:
+        output_path = Path().cwd() / "output.pdf"
     files: Sequence[File]
     if json_file is not None:
-        with open(json_file) as f:
-            files = Files.model_validate_json(f.read()).root
+        try:
+            json_text = json_file.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise typer.BadParameter(
+                f"JSON file not found: {json_file}"
+            ) from exc
+        except OSError as exc:
+            raise typer.BadParameter(f"Cannot read JSON file: {exc}") from exc
+
+        try:
+            files = Files.model_validate_json(json_text).root
+        except (ValidationError, ValueError) as ve:
+            raise typer.BadParameter(
+                f"JSON in {json_file} is not a valid `Files` payload:\n{ve}"
+            ) from ve
+
     elif file_paths is None:
         raise ValueError("Either file_paths or json_file must be provided")
     else:
         files = [File.model_validate({"path": p}) for p in file_paths]
-    _convert_and_merge_pdfs(files, output_path, set_bookmarks)
+    _convert_and_merge_pdfs(
+        files, output_path, set_bookmarks, overwrite=overwrite_existing
+    )
+    typer.echo(f"Merged pdfs to {output_path.absolute}")
