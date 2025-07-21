@@ -6,7 +6,7 @@ authors = [
     {name = "Alex",email = "aswann@protonmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "pydantic (>=2.10.6,<3.0.0)",
     "img2pdf (>=0.5.1,<0.6.0)",
