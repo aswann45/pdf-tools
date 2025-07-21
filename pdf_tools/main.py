@@ -1,3 +1,5 @@
+"""Entrypoint for CLI application."""
+
 from pdf_tools.cli import AsyncTyper
 from pdf_tools.convert.cli import cli as convert_cli
 from pdf_tools.merge.cli import cli as merge_cli
