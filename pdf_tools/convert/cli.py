@@ -46,13 +46,9 @@ def file_to_pdf(
     ```
     """
 
-    def _file_to_pdf(
-        path: Path, overwrite: bool
-    ) -> File:
+    def _file_to_pdf(path: Path, overwrite: bool) -> File:
         file = File.model_validate({"path": path})
-        return convert_file_to_pdf(
-            file, overwrite=overwrite
-        )
+        return convert_file_to_pdf(file, overwrite=overwrite)
 
     if path.suffix in {".doc", ".docx"}:
         with unoserver_listener(port=2002):

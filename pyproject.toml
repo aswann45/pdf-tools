@@ -1,6 +1,6 @@
 [project]
 name = "pdf-tools"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = [
     {name = "Alex",email = "aswann@protonmail.com"}
@@ -14,6 +14,7 @@ dependencies = [
     "pillow (>=11.1.0,<12.0.0)",
     "typer (>=0.15.1,<0.16.0)",
     "unoserver (>=3.3.2,<4.0.0)",
+    "pymupdf (>=1.26.3,<2.0.0)",
 ]
 
 

@@ -254,9 +254,7 @@ def convert_file_to_pdf(
         conversion rule matched.
     """
     if file.type in ["doc", "docx"]:
-        return convert_word_to_pdf(
-            file, output_path, overwrite=overwrite
-        )
+        return convert_word_to_pdf(file, output_path, overwrite=overwrite)
 
     if file.type in ["jpg", "jpeg", "png"]:
         return convert_image_to_pdf(file, output_path, overwrite=overwrite)
