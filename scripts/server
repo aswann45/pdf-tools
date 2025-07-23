@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-set -e
-
-cd "$(dirname "$0")/.."
-
-echo "Starting libreoffice server"
-
-unoserver --conversion-timeout 30

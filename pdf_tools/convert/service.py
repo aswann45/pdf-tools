@@ -74,7 +74,9 @@ def _output_dir_handler(input_path: Path, output_dir: Path) -> Path:
 
 
 def convert_word_to_pdf(
-    file: File, output_path: Path | None = None, overwrite: bool = False
+    file: File,
+    output_path: Path | None = None,
+    overwrite: bool = False,
 ) -> File:
     """Convert a Word document (``.doc``, ``.docx``) to PDF on disk.
 
@@ -128,7 +130,13 @@ def convert_word_to_pdf(
         )
     try:
         subprocess.run(
-            [_UNOCONVERT_CMD, str(file.absolute_path), new_path], check=True
+            [
+                _UNOCONVERT_CMD,
+                str(file.absolute_path),
+                new_path,
+            ],
+            check=True,
+            capture_output=True,
         )
     except subprocess.CalledProcessError as ex:
         raise RuntimeError(
@@ -158,6 +166,8 @@ def convert_image_to_pdf(
         with ``.pdf`` extension.
     overwrite : bool, default ``False``
         Overwrite output file if it already exists.
+    libre_port : int, default 2002
+        LibreOffce/unoserver port for ``"doc"`` and ``"docx"`` conversion.
 
     Returns
     -------
@@ -217,7 +227,9 @@ def convert_image_to_pdf(
 
 
 def convert_file_to_pdf(
-    file: File, output_path: Path | None = None, overwrite: bool = False
+    file: File,
+    output_path: Path | None = None,
+    overwrite: bool = False,
 ) -> File:
     """Dispatch *file* to the appropriate conversion helper.
 
@@ -242,9 +254,11 @@ def convert_file_to_pdf(
         conversion rule matched.
     """
     if file.type in ["doc", "docx"]:
-        return convert_word_to_pdf(file, output_path)
+        return convert_word_to_pdf(
+            file, output_path, overwrite=overwrite
+        )
 
     if file.type in ["jpg", "jpeg", "png"]:
-        return convert_image_to_pdf(file, output_path)
+        return convert_image_to_pdf(file, output_path, overwrite=overwrite)
 
     return file

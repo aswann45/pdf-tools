@@ -662,6 +662,21 @@ files = [
 ]
 
 [[package]]
+name = "unoserver"
+version = "3.3.2"
+description = "A server for file conversions with Libre Office"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "unoserver-3.3.2-py3-none-any.whl", hash = "sha256:87e144f903ee21951b2e06a97549450c13ed7eca5bcebad942d3352d4e882616"},
+    {file = "unoserver-3.3.2.tar.gz", hash = "sha256:1eeb7467cf6b56b8eff3b576e2d1b2b2ff4e0eb2052e995ac80a1456de300639"},
+]
+
+[package.extras]
+devenv = ["black", "check-manifest", "flake8", "pyroma", "pytest", "pytest-cov", "zest.releaser"]
+
+[[package]]
 name = "wrapt"
 version = "1.17.2"
 description = "Module for decorators, wrappers and monkey patching."
@@ -753,4 +768,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "5ff6795844c77fc1cf6c477f2f86ce6723d8ebcfd9af2b839c46836015f541b1"
+content-hash = "f7040e0ef157622d96f3a61e51589291112df1227ef5a8143053dc9319e80b6f"

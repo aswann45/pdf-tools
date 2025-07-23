@@ -8,7 +8,6 @@ echo "=> Bootstrapping dependencies"
 
 sudo apt update
 sudo apt install libreoffice
-pipx install unoserver --system-site-packages
 
 poetry install
 

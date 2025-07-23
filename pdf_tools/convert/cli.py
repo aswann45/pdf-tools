@@ -20,6 +20,7 @@ import typer
 
 from pdf_tools.cli import AsyncTyper
 from pdf_tools.convert.service import _output_dir_handler, convert_file_to_pdf
+from pdf_tools.convert.unoserver_ctx import unoserver_listener
 from pdf_tools.models.files import File, Files
 
 cli = AsyncTyper(no_args_is_help=True)
@@ -28,7 +29,7 @@ cli = AsyncTyper(no_args_is_help=True)
 @cli.command()
 def file_to_pdf(
     path: Annotated[
-        str,
+        Path,
         typer.Argument(help="Path to the input file (Word doc, image, etc.)."),
     ],
     overwrite_existing: Annotated[
@@ -44,8 +45,20 @@ def file_to_pdf(
     pdf-tools convert file-to-pdf report.docx
     ```
     """
-    file = File.model_validate({"path": path})
-    return convert_file_to_pdf(file, overwrite=overwrite_existing)
+
+    def _file_to_pdf(
+        path: Path, overwrite: bool
+    ) -> File:
+        file = File.model_validate({"path": path})
+        return convert_file_to_pdf(
+            file, overwrite=overwrite
+        )
+
+    if path.suffix in {".doc", ".docx"}:
+        with unoserver_listener(port=2002):
+            return _file_to_pdf(path, overwrite_existing)
+    else:
+        return _file_to_pdf(path, overwrite_existing)
 
 
 @cli.command()
@@ -108,17 +121,20 @@ def files_to_pdfs(
     converted: list[File] = []
     failures: list[Path] = []
 
-    for file in files:
-        try:
-            output_path = _output_dir_handler(file.path, output_dir)
-            converted.append(
-                convert_file_to_pdf(
-                    file, output_path=output_path, overwrite=overwrite_existing
+    with unoserver_listener(port=2002):
+        for file in files:
+            try:
+                output_path = _output_dir_handler(file.path, output_dir)
+                converted.append(
+                    convert_file_to_pdf(
+                        file,
+                        output_path=output_path,
+                        overwrite=overwrite_existing,
+                    )
                 )
-            )
-        except (RuntimeError, ValueError, OSError) as ex:
-            failures.append(file.path)
-            typer.secho(f"⚠️  Skipping {file.path}: {ex}", fg="yellow")
+            except (RuntimeError, ValueError, OSError) as ex:
+                failures.append(file.path)
+                typer.secho(f"⚠️  Skipping {file.path}: {ex}", fg="yellow")
 
     if not converted:
         raise typer.Exit(code=1)
@@ -159,17 +175,20 @@ def folder_to_pdfs(
     files = [File.model_validate({"path": file}) for file in folder.iterdir()]
     converted: list[File] = []
     failures: list[Path] = []
-    for file in files:
-        try:
-            output_path = _output_dir_handler(file.path, output_dir)
-            converted.append(
-                convert_file_to_pdf(
-                    file, output_path=output_path, overwrite=overwrite_existing
+    with unoserver_listener(port=2002):
+        for file in files:
+            try:
+                output_path = _output_dir_handler(file.path, output_dir)
+                converted.append(
+                    convert_file_to_pdf(
+                        file,
+                        output_path=output_path,
+                        overwrite=overwrite_existing,
+                    )
                 )
-            )
-        except (RuntimeError, ValueError, OSError) as ex:
-            failures.append(file.path)
-            typer.secho(f"⚠️  Skipping {file.path}: {ex}", fg="yellow")
+            except (RuntimeError, ValueError, OSError) as ex:
+                failures.append(file.path)
+                typer.secho(f"⚠️  Skipping {file.path}: {ex}", fg="yellow")
 
     if not converted:
         raise typer.Exit(code=1)
