@@ -25,7 +25,7 @@ def add_text(
     ] = "helv",
     color: Annotated[
         str, Option("--color", "-c", help="Hex colour (#RRGGBB).")
-    ] = "FF0000",
+    ] = "#FF0000",
     opacity: Annotated[
         float, Option("--opacity", "-o", help="0 transparent … 1 opaque.")
     ] = 0.15,

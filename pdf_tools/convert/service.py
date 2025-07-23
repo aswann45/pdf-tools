@@ -166,8 +166,6 @@ def convert_image_to_pdf(
         with ``.pdf`` extension.
     overwrite : bool, default ``False``
         Overwrite output file if it already exists.
-    libre_port : int, default 2002
-        LibreOffce/unoserver port for ``"doc"`` and ``"docx"`` conversion.
 
     Returns
     -------
@@ -205,7 +203,7 @@ def convert_image_to_pdf(
         )
     try:
         with Image.open(file.absolute_path) as image:
-            if image.format not in SUPPORTED_IMAGE_FORMATS:
+            if image.format.lower() not in SUPPORTED_IMAGE_FORMATS:
                 raise ValueError(
                     f"Unsupported image format '{image.format}'. "
                     f"Supported formats: "
