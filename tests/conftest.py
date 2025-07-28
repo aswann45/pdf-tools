@@ -23,7 +23,7 @@ def make_pdf(path: Path, pages: int = 1) -> None:  # pragma: no cover
 @pytest.fixture(scope="session")
 def libreoffice_available() -> bool:  # noqa: D401
     """Return True iff a LibreOffice CLI tool is on $PATH."""
-    return shutil.which("unoconvert") is not None
+    return shutil.which("unoconvert") is not None  # pragma: nocover
 
 
 @pytest.fixture(scope="function")
