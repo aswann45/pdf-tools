@@ -6,13 +6,16 @@ cd "$(dirname "$0")"/../
 
 echo "Runnning mypy checks..."
 mypy pdf_tools
+mypy tests
 
 echo "Running vulture checks..."
 vulture pdf_tools
 
 echo "Runnning ruff checks..."
 ruff check pdf_tools --ignore ERA001 --ignore FIX002
+ruff check tests --ignore ERA001 --ignore FIX002
 # ruff check app
 ruff format pdf_tools --check
+ruff format tests --check
 
 echo "Linting checks done!"
