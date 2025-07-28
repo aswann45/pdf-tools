@@ -1,20 +1,24 @@
 [project]
 name = "pdf-tools"
-version = "0.1.5"
+version = "0.1.6"
 description = ""
 authors = [
     {name = "Alex",email = "aswann@protonmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "<4,>=3.11"
 dependencies = [
     "pydantic (>=2.10.6,<3.0.0)",
     "img2pdf (>=0.5.1,<0.6.0)",
     "pypdf (>=5.2.0,<6.0.0)",
     "pillow (>=11.1.0,<12.0.0)",
     "typer (>=0.15.1,<0.16.0)",
-    "unoserver (>=3.3.2,<4.0.0)",
     "pymupdf (>=1.26.3,<2.0.0)",
+    "reportlab (>=4.4.3,<5.0.0)",
+    "pytest (>=8.4.1,<9.0.0)",
+    "hypothesis (>=6.136.3,<7.0.0)",
+    "types-reportlab (>=4.4.1.20250602,<5.0.0.0)",
+    "coverage (>=7.9.2,<8.0.0)",
 ]
 
 
@@ -28,5 +32,11 @@ pdf-tools = "pdf_tools.main:app"
 
 
 [tool.mypy]
-python_executable = "$VIRTUAL_ENV/bin/python"
+python_executable = ".venv/bin/python"
 plugins = ["pydantic.mypy"]
+
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow"
+]
