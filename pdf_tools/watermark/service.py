@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
+from typing import Any
 
 import pymupdf  # type: ignore[import-untyped]
 
@@ -45,24 +46,39 @@ def add_text_watermark(
         # Prepare placement defaults ------------------------------------------
         for page in _iter_target_pages(doc, all_pages=opts.all_pages):
             bbox = page.rect  # full page rectangle
-            x = opts.x if opts.x is not None else bbox.width / 2
-            y = opts.y if opts.y is not None else bbox.height / 2
+            cx = opts.x if opts.x is not None else bbox.width / 2
+            cy = opts.y if opts.y is not None else bbox.height / 2
 
-            page.insert_text(
-                (x, y),
+            half_w = opts.box_width / 2
+            half_h = opts.box_height / 2
+
+            rect = pymupdf.Rect(
+                cx - half_w, cy - half_h, cx + half_w, cy + half_h
+            )
+
+            h_align_map: Mapping[str, Any] = {
+                "left": pymupdf.TEXT_ALIGN_LEFT,
+                "center": pymupdf.TEXT_ALIGN_CENTER,
+                "right": pymupdf.TEXT_ALIGN_RIGHT,
+            }
+            align = h_align_map.get(opts.h_align, pymupdf.TEXT_ALIGN_CENTER)
+
+            page.insert_textbox(
+                rect,
                 opts.text,
                 fontname=opts.font_name,
                 fontsize=opts.font_size,
+                lineheight=opts.lineheight,
                 rotate=opts.rotation,
                 color=opts.color,  # validated to (r,g,b)
                 fill_opacity=opts.opacity,
                 render_mode=0,  # fill text
-                align=1,  # centre on (x,y)
+                align=align,
             )
-
+        len_ = len(doc)
         doc.save(dst, deflate=True)
 
     return WatermarkResult(
-        output=File.model_validate({"path_str": str(dst)}),
-        pages_processed=(len(doc) if opts.all_pages else 1),
+        output=File.model_validate({"path": dst}),
+        pages_processed=(len_ if opts.all_pages else 1),
     )

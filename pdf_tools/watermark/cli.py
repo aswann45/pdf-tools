@@ -7,6 +7,7 @@ import typer
 from typer import Argument, Option
 
 from pdf_tools.models.watermark import WatermarkOptions
+from pdf_tools.typings import Align
 from pdf_tools.watermark.service import add_text_watermark
 
 cli = typer.Typer(help="Add text or image watermarks to PDFs.")
@@ -23,6 +24,10 @@ def add_text(
     font_name: Annotated[
         str, Option("--font-name", "-f", help="Typeface name.")
     ] = "helv",
+    lineheight: Annotated[
+        float,
+        Option("--line-height", "-l", help="Text vertical spacing factor."),
+    ] = 1.0,
     color: Annotated[
         str, Option("--color", "-c", help="Hex colour (#RRGGBB).")
     ] = "#FF0000",
@@ -30,8 +35,13 @@ def add_text(
         float, Option("--opacity", "-o", help="0 transparent … 1 opaque.")
     ] = 0.15,
     rotation: Annotated[
-        float, Option("--rotation", "-r", help="Degrees counter-clockwise.")
-    ] = 45.0,
+        float,
+        Option(
+            "--rotation",
+            "-r",
+            help="Degrees counter-clockwise (90 degree incremeents).",
+        ),
+    ] = 0,
     x_position: Annotated[
         Optional[float],
         Option("--x-position", "-x", help="X position (pts from left)."),
@@ -40,6 +50,15 @@ def add_text(
         Optional[float],
         Option("--y-position", "-y", help="Y position (pts from top)."),
     ] = None,
+    box_width: Annotated[
+        float, Option("--box-width", help="Textbox width (pts).")
+    ] = 500.0,
+    box_height: Annotated[
+        float, Option("--box-height", help="Textbox height (pts).")
+    ] = 200.0,
+    h_align: Annotated[
+        Align, Option("--h-align", help="Horizontal alignment")
+    ] = Align.CENTER,
     first_page_only: Annotated[
         bool, Option("--first-page-only", help="Stamp only on the first page.")
     ] = False,
@@ -55,6 +74,10 @@ def add_text(
         x=x_position,
         y=y_position,
         all_pages=not first_page_only,
+        box_height=box_height,
+        box_width=box_width,
+        h_align=h_align.value,
+        lineheight=lineheight,
     )
     result = add_text_watermark(src=src, dst=dst, opts=opts)
     typer.secho(f"✅  {result.message}", fg="green")
