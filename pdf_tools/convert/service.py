@@ -25,7 +25,6 @@ Design notes
   points *output_path_str* to an existing location.
 """
 
-import shutil
 import subprocess
 from collections.abc import Sequence
 from io import BytesIO
@@ -36,6 +35,7 @@ import img2pdf  # type: ignore
 import typer
 from PIL import Image
 
+from pdf_tools.convert.unoserver_ctx import assert_office_ready
 from pdf_tools.models.files import File
 
 __all__: Sequence[str] = [
@@ -106,23 +106,24 @@ def convert_word_to_pdf(
     RuntimeError
         If LibreOffice exits with a non‑zero status.
     FileNotFoundError
-        If LibreOffice (``unoconvert``) is not available on the system.
-    FileNotFoundError
         If *output_path*'s parent directory does not exist.
     """
-    if shutil.which(_UNOCONVERT_CMD) is None:
-        raise FileNotFoundError(
-            f"LibreOffice {_UNOCONVERT_CMD} command not found on $PATH. "
-            f"Install LibreOffice or add it's binary directory to $PATH."
-        )
+    assert_office_ready()
     typer.echo(f"Converting {file.path.resolve()}")
     if output_path is not None:
-        new_path = output_path
+        if output_path.suffix == "":
+            # we think this is a directory
+            new_path = (output_path / file.path.stem).with_suffix(".pdf")
+        elif output_path.suffix != "":
+            # we think it's a filename
+            new_path = output_path
     else:
         new_path = file.absolute_path.with_suffix(".pdf")
 
     if new_path.exists() and overwrite is False:
         raise FileExistsError(f"File {new_path} already exists. Exiting.")
+    if new_path.is_dir():
+        raise ValueError(f"Path {new_path} is a directory.")
     if new_path.parent.exists() is False:
         raise FileNotFoundError(
             f"Output directory {new_path.parent} does not exist. "
@@ -144,6 +145,7 @@ def convert_word_to_pdf(
             f"Exit code {ex.returncode}. Stderr:\n{ex.stderr.decode()}."
         ) from ex
 
+    typer.echo(f"Converted {new_path}")
     _file_data = {"path": new_path, "bookmark_name": file.bookmark_name}
     return File.model_validate(_file_data)
 
@@ -184,18 +186,21 @@ def convert_image_to_pdf(
         If *overwrite* is False and the output path already exists.
     """
     typer.echo(f"Converting {file.path.resolve()}")
+
     if output_path is not None:
-        new_path = output_path
+        if output_path.suffix == "":
+            # we think this is a directory
+            new_path = (output_path / file.path.stem).with_suffix(".pdf")
+        elif output_path.suffix != "":
+            # we think it's a filename
+            new_path = output_path
     else:
         new_path = file.absolute_path.with_suffix(".pdf")
 
-    if output_path is not None:
-        new_path = output_path
-    else:
-        new_path = file.absolute_path.with_suffix(".pdf")
-
-    if new_path.exists() and overwrite is False:
+    if new_path.exists() and overwrite is False and new_path.is_file():
         raise FileExistsError(f"File {new_path} already exists. Exiting.")
+    if new_path.is_dir():
+        raise ValueError(f"Path {new_path} is a directory.")
     if new_path.parent.exists() is False:
         raise FileNotFoundError(
             f"Output directory {new_path.parent} does not exist. "
@@ -250,6 +255,11 @@ def convert_file_to_pdf(
     File
         Either the converted PDF description or the original *file* if no
         conversion rule matched.
+
+    Raises
+    ------
+    ValueError
+        If an unsupported file type is provided.
     """
     if file.type in ["doc", "docx"]:
         return convert_word_to_pdf(file, output_path, overwrite=overwrite)
@@ -257,4 +267,5 @@ def convert_file_to_pdf(
     if file.type in ["jpg", "jpeg", "png"]:
         return convert_image_to_pdf(file, output_path, overwrite=overwrite)
 
-    return file
+    else:
+        raise ValueError(f"Unsupported file type: {file.type}.")

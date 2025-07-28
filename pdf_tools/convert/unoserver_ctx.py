@@ -15,6 +15,8 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
+import typer
+
 __all__ = ["unoserver_listener"]
 
 _UNOSERVER_CMD = shutil.which(
@@ -34,6 +36,27 @@ def _wait_until_port_listens(port: int, timeout: int) -> None:
     raise TimeoutError(
         f"unoserver did not open port {port} within {timeout}s."
     )
+
+
+def assert_office_ready(port: int = _DEFAULT_PORT) -> None:
+    """Fail fast with guidance if LibreOffice/unoserver is not usable."""
+    if shutil.which("unoconvert") is None:
+        raise RuntimeError(
+            "LibreOffice’s `unoconvert` CLI is not on PATH.\n"
+            "Install LibreOffice, then either:\n"
+            "  • `sudo -H pip install --upgrade unoserver`   (system)\n"
+            "  • `pipx install unoserver --system-site-packages`   (system)\n"
+            "  • or run conversions with the bundled LibreOffice python.\n"
+            "See `pdf-tools doctor libreoffice` for details."
+        )
+    try:
+        _wait_until_port_listens(port, 15)
+    except TimeoutError as te:
+        raise RuntimeError(
+            "No UNO listener detected (default 127.0.0.1:2002).\n"
+            "Start one with:  unoserver --interface 127.0.0.1 --port 2002 &\n"
+            "Or use the `pdf-tools doctor libreoffice --start` helper."
+        ) from te
 
 
 @contextlib.contextmanager
@@ -63,7 +86,7 @@ def unoserver_listener(
             "Install it with:  pip install unoserver"
         )
 
-    cmd = [_UNOSERVER_CMD]
+    cmd = [_UNOSERVER_CMD, "--interface", "127.0.0.1", "--uno-port", str(port)]
     if soffice_path is not None:
         if not soffice_path.exists():
             raise FileNotFoundError(
@@ -71,6 +94,7 @@ def unoserver_listener(
             )
         cmd.extend(["--soffice", str(soffice_path)])
 
+    typer.echo("Starting unoserver...")
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.DEVNULL,
