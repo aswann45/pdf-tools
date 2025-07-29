@@ -21,36 +21,33 @@
 ## Installation
 
 ```bash
-pip install pdf-tools[full]               # everything
-# or choose extras:
-pip install pdf-tools[convert]            # +Pillow, img2pdf, unoserver
-pip install pdf-tools[watermark]          # +PyMuPDF
+pipx install unoserver --system-site-packages 
+pip install pdf-tools
 ```
 
 External dependency: LibreOffice must be installed and on your $PATH for Word→PDF conversion.
 
-On Linux it “just works”. On macOS/Windows either:
-
-1) use the bundled python that ships with LibreOffice, or
-2) call soffice --headless directly (see Batch listeners below).
+1) Install unoserver globally using ``pipx install --system-site-packages`` (prefered) or ``sudo -H pip install``
+2) use the bundled python that ships with LibreOffice, or
+3) call soffice --headless directly (see Batch listeners below).
 
 ## CLI Quick Start
 
 ```bash
 # 1. Convert a single Word file
-pdf-tools convert file-to-pdf draft.docx draft.pdf
+pdf-tools convert file-to-pdf draft.docx
 
 # 2. Convert every image in a folder → PDFs in ./out
 pdf-tools convert folder-to-pdfs assets/ --output-dir out/
 
-# 3. Merge selected PDFs (output first!)
-pdf-tools merge pdf-files merged.pdf a.pdf b.pdf c.pdf
+# 3. Merge selected PDFs
+pdf-tools merge pdf-files a.pdf b.pdf c.pdf -o merged.pdf 
 
 # 4. Merge *all* PDFs in a folder
-pdf-tools merge pdfs-in-folder merged.pdf scans/
+pdf-tools merge pdfs-in-folder scans/ -o merged.pdf 
 
 # 5. One-liner: convert images + docs → merge
-pdf-tools process convert-and-merge final.pdf image1.jpg doc1.docx doc2.docx
+pdf-tools process convert-and-merge-pdfs image1.jpg doc1.docx doc2.docx -o final.pdf 
 
 # 6. Add a diagonal red DRAFT watermark on every page
 pdf-tools watermark add-text src.pdf stamped.pdf \
@@ -63,7 +60,7 @@ pdf-tools watermark add-text src.pdf stamped.pdf \
 # spin up a listener for the whole session (Linux)
 unoserver --interface 127.0.0.1 --port 2002 &
 export LIBRE_PORT=2002   # used by convert helpers
-pdf-tools process convert-and-merge ...
+pdf-tools process convert-and-merge-pdfs ...
 kill %1                  # when done
 ```
 
@@ -95,7 +92,7 @@ add_text_watermark(src=Path("bundle.pdf"), dst=Path("bundle_wm.pdf"), opts=opts)
 
 ### Spinning up transient LibreOffice listener
 ```python
-from pdf_tools.libreoffice.unoserver_ctx import unoserver_listener
+from pdf_tools.convert.unoserver_ctx import unoserver_listener
 from pdf_tools.process.service import convert_and_merge_pdfs
 
 with unoserver_listener(port=2002):            # starts & auto-kills unoserver
@@ -108,14 +105,13 @@ with unoserver_listener(port=2002):            # starts & auto-kills unoserver
 ## Development setup
 
 ```bash
+pipx install unoserver --system-site-packages
 git clone https://github.com/your-org/pdf-tools.git
 cd pdf-tools
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,full]"   # tox, pytest, ruff, mypy, etc.
+poetry install --with dev   # include dev/test dependencies
 
 # Run checks
 ruff check .
 mypy .
 pytest -q
-mkdocs serve
 ```
