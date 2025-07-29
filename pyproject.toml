@@ -1,6 +1,6 @@
 [project]
-name = "pdf-toolkit"
-version = "0.1.7"
+name = "pdf-toolchest"
+version = "0.1.8"
 description = ""
 authors = [
     {name = "Alex",email = "aswann@protonmail.com"}
