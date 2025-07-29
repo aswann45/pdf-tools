@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/pdf-tools
+      url: https://pypi.org/p/pdf-toolkit
     permissions:
       id-token: write
     steps:
