@@ -1,30 +1,30 @@
 """
-High‑level PDF *merge* operations used by both the CLI and programmatic API.
+High-level PDF *merge* operations used by both the CLI and programmatic API.
 
 Only one public helper is exposed—:func:`merge_pdfs`.  It provides a minimal
 yet robust wrapper around :class:`pypdf.PdfWriter` so that downstream layers
-can merge an arbitrary sequence of :pyclass:`~pdf_tools.models.files.File`
-objects without fiddling with low‑level writer mechanics or conditional
+can merge an arbitrary sequence of :class:`pdf_tools.models.files.File`
+objects without fiddling with low-level writer mechanics or conditional
 bookmark logic.
 
-The function deliberately stays synchronous and file‑system side‑effectful
+The function deliberately stays synchronous and file-system side-effectful
 (*writes directly to disk*) because the surrounding Typer CLI command is also
 synchronous.  When we need async behaviour we can slap this into a thread
 executor.
 
 **Design decisions**
 --------------------
-1. *Graceful non‑PDF handling* – Non‑PDF inputs are skipped with a
-   user‑friendly warning via :pymod:`typer`.  This matches the CLI mantra of
+1. *Graceful non-PDF handling* – Non-PDF inputs are skipped with a
+   user-friendly warning via :mod:`typer`.  This matches the CLI mantra of
    "be liberal in what you accept".
 2. *Bookmark support* – If ``set_bookmarks=True`` we persist each source file's
-   :pyattr:`~pdf_tools.models.files.File.bookmark_name` (or fallback to its
-   :pyattr:`~pdf_tools.models.files.File.name`) as an outline entry so viewers
+   :attr:`pdf_tools.models.files.File.bookmark_name` (or fallback to its
+   :attr:`pdf_tools.models.files.File.name`) as an outline entry so viewers
    like Acrobat or browser PDF readers render a helpful side panel.
 3. *Pydantic return type* – The function returns a validated
-   :class:`~pdf_tools.models.files.File` describing the newly created output
+   :class:`pdf_tools.models.files.File` describing the newly created output
    path.  This keeps the public API consistent with the rest of the project and
-   avoids leaking raw ``Path`` objects.
+   avoids leaking raw :class:`Path` objects.
 """
 
 from collections.abc import Sequence
@@ -50,34 +50,34 @@ def merge_pdfs(
 
     Parameters
     ----------
-    files : Sequence[File]
-        Ordered iterable of :class:`~pdf_tools.models.files.File` instances to
-        merge.  Non‑PDF entries are *silently* skipped after emitting a warning
-        via :pymod:`typer`.
-    output_path: pathlib.Path
+    files : :class:`Sequence[File]`
+        Ordered iterable of :class:`pdf_tools.models.files.File` instances to
+        merge.  Non-PDF entries are skipped after emitting a warning via
+        :mod:`typer`.
+    output_path: :class:`pathlib.Path`
         Filesystem path where the merged PDF will be written.  A ``.pdf``
         extension is not enforced but is *highly* recommended to avoid viewer
         confusion.
-    set_bookmarks : bool, default ``False``
-        When *True* each source document is inserted as a top‑level outline
+    set_bookmarks : `bool`, default ``False``
+        When `True` each source document is inserted as a top-level outline
         (bookmark) in the resulting file.  The outline title is pulled from
-        the corresponding :pyattr:`~pdf_tools.models.files.File.bookmark_name`
-        or falls back to :pyattr:`~pdf_tools.models.files.File.name`.
-    overwrite : bool, default ``False``
-        When *True* overwrite output documents if they already exist.
+        the corresponding :attr:`pdf_tools.models.files.File.bookmark_name`
+        or falls back to :attr:`pdf_tools.models.files.File.name`.
+    overwrite : `bool`, default ``False``
+        When `True` overwrite output documents if they already exist.
 
     Returns
     -------
     File
-        A new :class:`~pdf_tools.models.files.File` instance pointing to the
+        A new :class:`pdf_tools.models.files.File` instance pointing to the
         merged document.
 
     Raises
     ------
     FileExistsError
-        If *overwrite* is False and the output path already exists.
+        If `overwrite` is False and the output path already exists.
     FileNotFoundError
-        If *output_path*'s parent directory does not exist.
+        If `output_path`'s parent directory does not exist.
     OSError
         If the underlying OS call fails during write (e.g., permission error).
 

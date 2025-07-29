@@ -1,8 +1,9 @@
-"""Context manager that starts a transient *unoserver* listener.
+"""Context manager that starts a transient :mod:`unoserver` listener.
 
 The listener speaks UNO over a TCP socket (default 127.0.0.1:2002). Calls to
-``unoconvert`` in the same process tree can then use ``--port 2002`` to reuse
-that single LibreOffice instance, avoiding the heavy start-up cost per file.
+:mod:`unoconvert` in the same process tree can then use ``--port 2002`` to
+reuse that single LibreOffice instance, avoiding the heavy start-up cost per
+file.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ def _wait_until_port_listens(port: int, timeout: int) -> None:
 
 
 def assert_office_ready(port: int = _DEFAULT_PORT) -> None:
-    """Fail fast with guidance if LibreOffice/unoserver is not usable."""
+    """Fail fast with guidance if LibreOffice/`unoserver` is not usable."""
     if shutil.which("unoconvert") is None:
         raise RuntimeError(
             "LibreOffice’s `unoconvert` CLI is not on PATH.\n"
@@ -47,7 +48,6 @@ def assert_office_ready(port: int = _DEFAULT_PORT) -> None:
             "  • `sudo -H pip install --upgrade unoserver`   (system)\n"
             "  • `pipx install unoserver --system-site-packages`   (system)\n"
             "  • or run conversions with the bundled LibreOffice python.\n"
-            "See `pdf-tools doctor libreoffice` for details."
         )
     try:
         _wait_until_port_listens(port, 15)
@@ -55,7 +55,6 @@ def assert_office_ready(port: int = _DEFAULT_PORT) -> None:
         raise RuntimeError(
             "No UNO listener detected (default 127.0.0.1:2002).\n"
             "Start one with:  unoserver --interface 127.0.0.1 --port 2002 &\n"
-            "Or use the `pdf-tools doctor libreoffice --start` helper."
         ) from te
 
 
@@ -76,7 +75,8 @@ def unoserver_listener(
     Raises
     ------
     FileNotFoundError
-        If *unoserver* (or *soffice* when explicitly provided) is not found.
+        If :mod:`unoserver` (or `soffice` when explicitly provided) is not
+        found.
     TimeoutError
         If the listener does not start within the allotted timeout.
     """

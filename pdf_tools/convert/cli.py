@@ -1,5 +1,5 @@
 """
-Typer sub‑commands that turn common document types into PDFs.
+Typer sub-commands that turn common document types into PDFs.
 
 Commands
 --------
@@ -165,7 +165,7 @@ def folder_to_pdfs(
 ) -> list[File]:
     """Convert every supported file in *input_dir_path*.
 
-    The scan is **non‑recursive**; it only checks the folder’s first level.
+    The scan is **non-recursive**; it only checks the folder’s first level.
     """
     folder = Path(input_dir)
     files = [File.model_validate({"path": file}) for file in folder.iterdir()]

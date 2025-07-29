@@ -53,7 +53,7 @@ def pdf_files(
     set_bookmarks: Annotated[
         bool,
         typer.Option(
-            help="Create a top‑level bookmark for each source document."
+            help="Create a top-level bookmark for each source document."
         ),
     ] = False,
     overwrite_existing: Annotated[
@@ -63,11 +63,11 @@ def pdf_files(
 ) -> None:
     """Merge explicit PDF paths *or* a JSON bundle.
 
-    The command supports two mutually‑exclusive input modes and
+    The command supports two mutually-exclusive input modes and
     passes every entry to :func:`pdf_tools.merge.service.merge_pdfs`:
 
     1. **Path list** – supply one or more *file_path* directly on the command
-       line: ``pdf-tools merge pdf-files a.pdf b.pdf out.pdf``.
+       line: ``pdf-tools merge pdf-files a.pdf b.pdf -o out.pdf``.
     2. **JSON bundle** – provide ``json-file`` that contains a serialised
        :class:`pdf_tools.models.files.Files` object (as produced by other
        commands).  This is handy for very long file lists or scripted flows.
@@ -123,7 +123,7 @@ def pdfs_in_folder(
     set_bookmarks: Annotated[
         bool,
         typer.Option(
-            help="Create a top‑level bookmark for each source document."
+            help="Create a top-level bookmark for each source document."
         ),
     ] = False,
     overwrite_existing: Annotated[
@@ -134,7 +134,7 @@ def pdfs_in_folder(
     """Merge **all** PDFs found in *input_dir_path*.
 
     Additional information:
-    The command scans the directory non‑recursively (``Path.iterdir``) and
+    The command scans the directory non-recursively (``Path.iterdir``) and
     passes every entry to :func:`pdf_tools.merge.service.merge_pdfs`.
     """
     if output_path is None:

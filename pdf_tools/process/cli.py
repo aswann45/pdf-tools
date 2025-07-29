@@ -70,10 +70,10 @@ def convert_and_merge_pdfs(
     --------
     ```bash
     # Direct list of files
-    pdf-tools process convert-and-merge-pdfs bundle.pdf report.docx photo.jpg
+    pdf-tools process convert-and-merge-pdfs report.docx photo.jpg -o merge.pdf
 
     # Using a JSON bundle generated elsewhere
-    pdf-tools process convert-and-merge-pdfs bundle.pdf --json-file batch.json
+    pdf-tools process convert-and-merge-pdfs --json-file data.json -o merge.pdf
     ```
     """
     if (file_paths is None) == (json_file is None):

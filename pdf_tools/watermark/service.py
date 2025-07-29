@@ -24,20 +24,27 @@ def add_text_watermark(
     dst: Path,
     opts: WatermarkOptions,
 ) -> WatermarkResult:
-    """Stamp *text* onto a PDF using PyMuPDF.
+    """Stamp *text* onto a PDF using :mod:`PyMuPDF`.
 
     Parameters
     ----------
-    src, dst
-        Input and output PDF paths.
-    opts
+    src : :class:`Path`
+        Input PDF path.
+    dst : :class:`Path`
+        Output PDF path.
+    opts : :class:`WatermarkOptions`
         Styling & placement options; see
-        :class:`~pdf_tools.watermark.models.WatermarkOptions`.
+        :class:`pdf_tools.models.watermark.WatermarkOptions`.
 
     Returns
     -------
-    WatermarkResult
+    :class:`WatermarkResult`
         Metadata describing the operation.  Raises on error.
+
+    Raises
+    ------
+    ValueError
+        If source and destination paths are the same.
     """
     if src == dst:
         raise ValueError("Source and destination paths must differ.")

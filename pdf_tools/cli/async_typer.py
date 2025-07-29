@@ -1,8 +1,8 @@
 """
 Async Typer implementation.
 
-Drop‑in replacement for :class:`typer.Typer` that allows **async/await**
-commands *without* manual event‑loop plumbing.
+Drop-in replacement for :class:`typer.Typer` that allows **async/await**
+commands *without* manual event-loop plumbing.
 
 Typer (and Click underneath) expects synchronous callables.  To support native
 ``async def`` commands we subclass :class:`typer.Typer` and wrap coroutine
@@ -43,7 +43,7 @@ class AsyncTyper(Typer):
 
     The class overrides :meth:`typer.Typer.command` and
     :meth:`typer.Typer.callback` to detect coroutine functions and wrap them in
-    a small sync shim that executes :func:`asyncio.run`.  Non‑coroutine
+    a small sync shim that executes :func:`asyncio.run`.  Non-coroutine
     functions are registered untouched, so performance and signature
     introspection remain identical to upstream Typer.
     """
@@ -54,11 +54,11 @@ class AsyncTyper(Typer):
 
         Parameters
         ----------
-        decorator : Callable[[Callable], Any]
-            The Typer (Click) decorator returned by ``Typer.command`` or
-            ``Typer.callback``.
-        f : Callable
-            The original user‑defined function (may be a coroutine).
+        decorator : `Callable[[Callable], Any]`
+            The Typer (Click) decorator returned by :meth:`Typer.command` or
+            :meth:`Typer.callback`.
+        f : `Callable`
+            The original user-defined function (may be a coroutine).
 
         Returns
         -------
@@ -79,11 +79,11 @@ class AsyncTyper(Typer):
         return f
 
     def callback(self, *args: Any, **kwargs: Any) -> Any:
-        """Return a Typer *callback* decorator that supports coroutines."""
+        """Return a *callback* decorator that supports coroutines."""
         decorator = super().callback(*args, **kwargs)
         return partial(self.maybe_run_async, decorator)
 
     def command(self, *args: Any, **kwargs: Any) -> Any:
-        """Return a Typer *command* decorator that supports coroutines."""
+        """Return a *command* decorator that supports coroutines."""
         decorator = super().command(*args, **kwargs)
         return partial(self.maybe_run_async, decorator)

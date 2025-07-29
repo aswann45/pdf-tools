@@ -16,7 +16,43 @@ from .files import File
 
 
 class WatermarkOptions(BaseModel):
-    """User-tunable styling for text watermarks."""
+    """User-tunable styling for text watermarks.
+
+    Parameters
+    ----------
+    text : `str`
+        Label to stamp.
+    font_size : `int`, default 48
+        Font size.
+    font_name : `str`, default "helv"
+        MuPDF font name. Defaults to "helv", the built-in Helvetica alias.
+    lineheight : `float`, default 1.0
+        Factor to increase/decrease vertical text spacing.
+    rotation : `float`, default 0.0
+        Text rotation in degrees. Must be multiple of 90.
+    opacity : `float`, default 0.15
+        Text opacity.
+    color : `str` | `tuple[float, float, float]`, default "#FF0000"
+        Text color as either a 3- or 6-character hex string or
+        3-tuple float value.
+    x : `float` | `None`, default `None`
+        Horizontal position, center if None.
+    y : `float` | `None`, default `None`
+        Vertical position, center if None.
+    box_width : `float`, default 500.0
+        Width of textbox in points.
+    box_height : `float`, default 200.0
+        Height of textbox in points.
+    h_align : `str`, default "center"
+        Horizontal text alignment within textbox. One of "center," "left," or
+        "right."
+    v_align : `str`, default "center"
+        Vertical text alignment within textbox. One of "center," "left," or
+        "right."
+    all_pages : `bool`, default ``True``
+        Apply formatting to all pages if ``True``. If ``False``, only apply
+        formatting to first page.
+    """
 
     text: Annotated[str, Field(min_length=1, description="Label to stamp")]
     font_size: Annotated[int, Field(gt=0)] = 48
@@ -25,7 +61,9 @@ class WatermarkOptions(BaseModel):
         default=1.0,
         description="Factor to increase/decrese vertical text spacing.",
     )
-    rotation: float = Field(default=0, description="degrees, multiples of 90")
+    rotation: float = Field(
+        default=0.0, description="degrees, multiples of 90", multiple_of=90.0
+    )
     opacity: Annotated[float, Field(ge=0.0, le=1.0)] = 0.15
     color: str | tuple[float, float, float] = Field(
         default="#FF0000", description="hex or 0-1 tuple"
