@@ -15,8 +15,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: pdf-toolchest
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -27,7 +25,6 @@ jobs:
           pip install poetry
       - name: Build package
         run: |
-          cd pdf-toolchest
           poetry build
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
