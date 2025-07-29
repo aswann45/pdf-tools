@@ -15,11 +15,12 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: pdf-toolchest
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.x"
-          path: pdf-toolchest
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
