@@ -89,7 +89,7 @@ class WatermarkOptions(BaseModel):
 
     @field_validator("color")
     @classmethod
-    def _validate_color(cls, v) -> tuple[float, ...]:
+    def _validate_color(cls, v: str | tuple[float, ...]) -> tuple[float, ...]:
         """Accept #RGB hex or float tuple."""
         if isinstance(v, str):
             v = v.lstrip("#")

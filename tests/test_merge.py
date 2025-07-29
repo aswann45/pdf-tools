@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pypdf import PdfReader, PdfWriter
@@ -32,7 +33,7 @@ def test_merge_page_count(sample_pdfs: Sequence[File], tmp_path: Path) -> None:
     assert total_in == total_out
 
 
-def test_merge_pdfs_success(tmp_path, monkeypatch):
+def test_merge_pdfs_success(tmp_path: Path, monkeypatch: Any) -> None:
     """A merged file is written and a validated File is returned."""
     # Arrange – two tiny PDFs
     input1 = tmp_path / "a.pdf"
@@ -59,7 +60,9 @@ def test_merge_pdfs_success(tmp_path, monkeypatch):
     assert merged_file.type == "pdf"
 
 
-def test_merge_pdfs_raises_when_output_exists(tmp_path, monkeypatch):
+def test_merge_pdfs_raises_when_output_exists(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
     """Raise FileExistsError if output already exists and overwrite False."""
     # Arrange – source PDF & pre-existing destination
     src = tmp_path / "src.pdf"
@@ -78,7 +81,9 @@ def test_merge_pdfs_raises_when_output_exists(tmp_path, monkeypatch):
         merge_pdfs(files=files, output_path=out_path, overwrite=False)
 
 
-def test_merge_pdfs_skips_when_wrong_file_type(tmp_path, monkeypatch, capfd):
+def test_merge_pdfs_skips_when_wrong_file_type(
+    tmp_path: Path, monkeypatch: Any, capfd: Any
+) -> None:
     """Skip merging file if file is not a PDF."""
     # Arrange
     src = tmp_path / "src.img"
@@ -97,7 +102,9 @@ def test_merge_pdfs_skips_when_wrong_file_type(tmp_path, monkeypatch, capfd):
         merge_pdfs(files=files, output_path=out_path)
 
 
-def test_merge_pdfs_raises_when_parent_dir_missing(tmp_path, monkeypatch):
+def test_merge_pdfs_raises_when_parent_dir_missing(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
     """Raise FileNotFoundError if the parent directory does not exist."""
     # Arrange
     src = tmp_path / "src.pdf"

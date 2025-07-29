@@ -12,10 +12,10 @@ from pdf_tools.models.files import File
 from pdf_tools.models.watermark import WatermarkOptions, WatermarkResult
 
 
-def _iter_target_pages(
+def _iter_target_pages(  # type: ignore[no-any-unimported]
     doc: pymupdf.Document, *, all_pages: bool
 ) -> Iterable[pymupdf.Page]:
-    return doc if all_pages else [doc[0]]  # first page only
+    return doc if all_pages else [doc[0]]
 
 
 def add_text_watermark(

@@ -170,7 +170,7 @@ def test_word_subprocess_failure(
     src = tmp_path / "c.docx"
     src.touch()
 
-    def boom(*_a, **_kw) -> None:  # noqa: D401
+    def boom(*_a: Any, **_kw: Any) -> None:  # noqa: D401
         raise service.subprocess.CalledProcessError(
             1, "unoconvert", b"", b"err"
         )
@@ -232,7 +232,7 @@ def test_image_rgb_conversion(
     """Non-RGB images are converted to RGB."""
     called = {"converted": False}
 
-    def _convert(self, *args, **kwargs):  # type: ignore[no-self-use]
+    def _convert(self: Image.Image, *args: Any, **kwargs: Any) -> Image.Image:
         called["converted"] = True
         return orig_convert(self, *args, **kwargs)
 
@@ -250,7 +250,7 @@ def test_dispatch_to_word(
     """Dispatches *.doc* files to `convert_word_to_pdf`."""
     sentinel = object()
 
-    def _fake(*_a, **_kw):
+    def _fake(*_a: Any, **_kw: Any) -> object:
         return sentinel
 
     monkeypatch.setattr(service, "convert_word_to_pdf", _fake)
@@ -307,7 +307,7 @@ def test_assert_ready_no_listener(monkeypatch: pytest.MonkeyPatch) -> None:
         raising=True,
     )
 
-    def _boom(*_a, **_kw):  # noqa: D401
+    def _boom(*_a: Any, **_kw: Any) -> None:
         raise TimeoutError
 
     monkeypatch.setattr(
@@ -362,13 +362,13 @@ def test_listener_with_custom_soffice(
     captured: dict[str, Any] = {}
 
     class DummyProc:  # noqa: D101
-        def terminate(self):
+        def terminate(self) -> None:
             captured["terminated"] = True  # noqa: D401
 
-        def wait(self, timeout=None):
+        def wait(self, timeout: int | None = None) -> None:
             captured["waited"] = True  # noqa: D401
 
-    def _fake_popen(cmd, **_kw):
+    def _fake_popen(cmd: Any, **_kw: Any) -> DummyProc:
         captured["cmd"] = cmd
         return DummyProc()
 
