@@ -1,6 +1,6 @@
 [project]
 name = "pdf-toolchest"
-version = "0.1.9"
+version = "0.1.10"
 description = "A Swiss-army knife for everyday PDF workflows – pure-Python, cross-platform, and fully typed."
 authors = [
     {name = "Alex",email = "aswann@protonmail.com"}
