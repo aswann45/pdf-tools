@@ -30,10 +30,26 @@ def test_watermark_first_page(tmp_path: Path) -> None:
 
 
 def test_same_src_dst_paths_raises_value_error(tmp_path: Path) -> None:
-    """Identical source and desitnation paths raise ValueError."""
+    """Identical source and destination paths raise ValueError."""
     src = tmp_path / "src.pdf"
     dst = src
     opts = WatermarkOptions(text="TEST")
 
     with pytest.raises(ValueError):
         add_text_watermark(src=src, dst=dst, opts=opts)
+
+
+def test_watermark_accepts_pathlike_inputs(tmp_path: Path) -> None:
+    """Watermark service accepts string paths."""
+    src = tmp_path / "src.pdf"
+    make_pdf(src, pages=1)
+    dst = tmp_path / "dst.pdf"
+
+    result = add_text_watermark(
+        src=str(src),
+        dst=str(dst),
+        opts=WatermarkOptions(text="TEST"),
+    )
+
+    assert result.output.path == dst
+    assert dst.exists()

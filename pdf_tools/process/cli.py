@@ -11,13 +11,15 @@ commands.
 """
 
 from collections.abc import Sequence
+from contextlib import nullcontext
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from pydantic import ValidationError
 
 from pdf_tools.cli import AsyncTyper
+from pdf_tools.convert.unoserver_ctx import unoserver_listener
 from pdf_tools.models.files import File, Files
 from pdf_tools.process.service import (
     convert_and_merge_pdfs as _convert_and_merge_pdfs,
@@ -26,16 +28,20 @@ from pdf_tools.process.service import (
 cli = AsyncTyper(no_args_is_help=True)
 
 
+def _requires_office(files: Sequence[File]) -> bool:
+    return any(file.type.lower() in {"doc", "docx"} for file in files)
+
+
 @cli.command()
 def convert_and_merge_pdfs(
     file_paths: Annotated[
-        Optional[list[Path]],
+        list[Path] | None,
         typer.Argument(
             help="One or more input paths. Ignored when --json-file is used."
         ),
     ] = None,
     json_file: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             "--json-file",
             "-j",
@@ -43,7 +49,7 @@ def convert_and_merge_pdfs(
         ),
     ] = None,
     output_path: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             "--output-path",
             "-o",
@@ -64,18 +70,7 @@ def convert_and_merge_pdfs(
         typer.Option(help="Overwrite output files if they already exist."),
     ] = False,
 ) -> None:
-    """Convert inputs to PDF, then merge them.
-
-    Examples
-    --------
-    ```bash
-    # Direct list of files
-    pdf-tools process convert-and-merge-pdfs report.docx photo.jpg -o merge.pdf
-
-    # Using a JSON bundle generated elsewhere
-    pdf-tools process convert-and-merge-pdfs --json-file data.json -o merge.pdf
-    ```
-    """
+    """Convert inputs to PDF, then merge them."""
     if (file_paths is None) == (json_file is None):
         raise typer.BadParameter(
             "Provide *either* input paths *or* --json-file, not both."
@@ -104,7 +99,13 @@ def convert_and_merge_pdfs(
         raise ValueError("Either file_paths or json_file must be provided")
     else:
         files = [File.model_validate({"path": p}) for p in file_paths]
-    _convert_and_merge_pdfs(
-        files, output_path, set_bookmarks, overwrite=overwrite_existing
+    context = (
+        unoserver_listener(uno_port=2002)
+        if _requires_office(files)
+        else nullcontext()
     )
-    typer.echo(f"Merged pdfs to {output_path.absolute}")
+    with context:
+        _convert_and_merge_pdfs(
+            files, output_path, set_bookmarks, overwrite=overwrite_existing
+        )
+    typer.echo(f"Merged PDFs to {output_path.resolve()}")

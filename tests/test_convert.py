@@ -18,6 +18,12 @@ from pdf_tools.convert.unoserver_ctx import (
     unoserver_listener,
 )
 from pdf_tools.models.files import File
+from tests.conftest import libreoffice_available
+
+requires_libreoffice = pytest.mark.skipif(
+    not libreoffice_available(),
+    reason="LibreOffice/unoserver stack not available",
+)
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -41,11 +47,37 @@ def test_png_to_pdf(
     Path(img_path).unlink()
 
 
+def test_pathlike_png_to_pdf(tmp_path: Path) -> None:
+    """Path-like inputs are accepted directly."""
+    img_path = tmp_path / "pathlike.png"
+    Image.new("RGB", (50, 50), (255, 0, 0)).save(img_path)
+
+    pdf_file = convert_file_to_pdf(file=img_path, output_path=tmp_path)
+    assert pdf_file.path == tmp_path / "pathlike.pdf"
+    assert pdf_file.path.stat().st_size > 0
+
+
+@pytest.mark.parametrize(
+    ("extension", "image_format"),
+    [("bmp", "BMP"), ("tiff", "TIFF")],
+)
+def test_supported_image_formats_dispatch(
+    tmp_path: Path, extension: str, image_format: str
+) -> None:
+    """Dispatcher routes all documented image formats."""
+    img_path = tmp_path / f"supported.{extension}"
+    Image.new("RGB", (50, 50), (255, 0, 0)).save(img_path, format=image_format)
+
+    pdf_file = convert_file_to_pdf(file=img_path, output_path=tmp_path)
+    assert pdf_file.path == tmp_path / "supported.pdf"
+    assert pdf_file.path.stat().st_size > 0
+
+
 def test_unsupported_format(tmp_path: Path) -> None:
     """GIF raises ValueError (per docstring)."""
     gif = tmp_path / "bad.gif"
     Image.new("RGB", (50, 50)).save(gif, format="GIF")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unsupported file type"):
         convert_file_to_pdf(file=File(path=gif), output_path=tmp_path)
 
 
@@ -95,6 +127,7 @@ def test_output_dir_handler(tmp_path: Path) -> None:
     )  # lines 72-73 :contentReference[oaicite:0]{index=0}
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_word_directory_output(tmp_path: Path, stub_subprocess: None) -> None:
     """Directory → proper filename.pdf."""
@@ -110,6 +143,7 @@ def test_word_directory_output(tmp_path: Path, stub_subprocess: None) -> None:
     assert result.path == out_dir / "x.pdf"  # covers 116
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_word_default_path(tmp_path: Path, stub_subprocess: None) -> None:
     """``output_path=None``."""
@@ -120,6 +154,7 @@ def test_word_default_path(tmp_path: Path, stub_subprocess: None) -> None:
     assert result.path == src.with_suffix(".pdf")  # covers 121
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_word_file_exists(tmp_path: Path, stub_subprocess: None) -> None:
     """Existing PDF raises FileExistsError."""
@@ -133,6 +168,7 @@ def test_word_file_exists(tmp_path: Path, stub_subprocess: None) -> None:
             service.convert_word_to_pdf(File(path=src))
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_word_output_is_directory(
     tmp_path: Path, stub_subprocess: None
@@ -150,6 +186,7 @@ def test_word_output_is_directory(
             )
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_word_parent_missing(tmp_path: Path, stub_subprocess: None) -> None:
     """Parent directory does not exist."""
@@ -162,6 +199,7 @@ def test_word_parent_missing(tmp_path: Path, stub_subprocess: None) -> None:
             service.convert_word_to_pdf(File(path=src), output_path=out_path)
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_word_subprocess_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -226,6 +264,27 @@ def test_image_unsupported_format(tmp_path: Path) -> None:
         service.convert_image_to_pdf(File(path=bad_img), overwrite=True)
 
 
+def test_batch_conversion_reports_skipped_unsupported(
+    tmp_path: Path,
+) -> None:
+    """Batch conversion keeps supported files and reports skipped inputs."""
+    good_img = tmp_path / "good.png"
+    bad_file = tmp_path / "bad.txt"
+    Image.new("RGB", (10, 10)).save(good_img, "PNG")
+    bad_file.write_text("not convertible")
+
+    result = service.convert_files_to_pdfs(
+        [good_img, bad_file],
+        output_dir=tmp_path,
+        overwrite=True,
+    )
+
+    assert [file.path for file in result.converted] == [tmp_path / "good.pdf"]
+    assert len(result.skipped) == 1
+    assert result.skipped[0].path == bad_file
+    assert "Unsupported file type" in result.skipped[0].reason
+
+
 def test_image_rgb_conversion(
     tmp_image: File, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -243,6 +302,7 @@ def test_image_rgb_conversion(
     assert called["converted"] is True
 
 
+@requires_libreoffice
 @pytest.mark.slow
 def test_dispatch_to_word(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

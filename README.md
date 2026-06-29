@@ -1,117 +1,125 @@
 # pdf-tools
 
-*A Swiss-army knife for everyday PDF workflows – pure-Python, cross-platform, and fully typed.*
-
----
+*A Swiss-army knife for everyday PDF workflows - pure-Python, cross-platform, and fully typed.*
 
 ## Features
 
 | Capability | Sub-command / API | Notes |
 |------------|------------------|-------|
-| **Convert** images (`.png`, `.jpg`, …) or Word (`.docx`) to PDF | `pdf-tools convert …` <br>`pdf_tools.convert.service.convert_file_to_pdf()` | Uses **Pillow + img2pdf** for images and **LibreOffice / unoserver** for Word files. |
-| **Merge** multiple PDFs (or whole folders) | `pdf-tools merge …` <br>`pdf_tools.merge.service.merge_pdfs()` | Preserves bookmarks; skips non-PDF inputs with a warning. |
-| **Process** = Convert **→** Merge in one go | `pdf-tools process convert-and-merge …` | Handy for ad-hoc batches of mixed file types. |
-| **Watermark** (text stamp) | `pdf-tools watermark add-text …` <br>`pdf_tools.watermark.service.add_text_watermark()` | PyMuPDF in-place editing; configurable font, colour, opacity, rotation, position. |
-| **Async-friendly CLI** | Built on Typer + custom `AsyncTyper` | Callbacks can be `async def` – future-proof for parallel work. |
-| **Pydantic v2 models** | `File`, `Files`, `WatermarkOptions`, … | JSON-serialisable contracts for easy automation. |
-| **Fully typed** + Ruff + Mypy + pytest + hypothesis |   | CI fails on lint, type, docs, or test issues. |
-
----
+| **Convert** images (`.png`, `.jpg`, `.tiff`, `.bmp`, ...) or Word (`.doc`, `.docx`) to PDF | `pdf-tools convert ...` <br>`pdf_tools.convert_file_to_pdf()` | Uses Pillow + img2pdf for images and LibreOffice / unoserver for Word files. |
+| **Merge** multiple PDFs or whole folders | `pdf-tools merge ...` <br>`pdf_tools.merge_pdfs()` | Preserves bookmarks; skips non-PDF inputs with a warning. |
+| **Process** = convert then merge | `pdf-tools process convert-and-merge-pdfs ...` <br>`pdf_tools.convert_and_merge_pdfs()` | Converts supported inputs, passes existing PDFs through, and merges the result. |
+| **Watermark** text stamps | `pdf-tools watermark add-text ...` <br>`pdf_tools.add_text_watermark()` | PyMuPDF-based text watermarking with configurable font, color, opacity, rotation, and position. |
+| **Async-friendly CLI** | Built on Typer + `AsyncTyper` | CLI callbacks can be `async def`. |
+| **Pydantic v2 models** | `File`, `Files`, `WatermarkOptions`, ... | JSON-serializable contracts for automation. |
 
 ## Installation
 
+The published Python package is `pdf-toolchest`; the installed command is `pdf-tools`.
+
 ```bash
-pipx install unoserver --system-site-packages 
-pip install pdf-tools
+pip install pdf-toolchest
+pdf-tools --help
 ```
 
-External dependency: LibreOffice must be installed and on your $PATH for Word→PDF conversion.
+Word conversion requires LibreOffice plus a working `unoserver` / `unoconvert` install. Install `unoserver` with the Python environment that can import LibreOffice's `uno` module; for many Linux setups this is:
 
-1) Install unoserver globally using ``pipx install --system-site-packages`` (prefered) or ``sudo -H pip install``
-2) use the bundled python that ships with LibreOffice, or
-3) call soffice --headless directly (see Batch listeners below).
+```bash
+pipx install unoserver --system-site-packages
+```
 
 ## CLI Quick Start
 
 ```bash
-# 1. Convert a single Word file
+# Convert a single Word file
 pdf-tools convert file-to-pdf draft.docx
 
-# 2. Convert every image in a folder → PDFs in ./out
+# Convert every supported file in a folder to PDFs in ./out
 pdf-tools convert folder-to-pdfs assets/ --output-dir out/
 
-# 3. Merge selected PDFs
-pdf-tools merge pdf-files a.pdf b.pdf c.pdf -o merged.pdf 
+# Merge selected PDFs
+pdf-tools merge pdf-files a.pdf b.pdf c.pdf -o merged.pdf
 
-# 4. Merge *all* PDFs in a folder
-pdf-tools merge pdfs-in-folder scans/ -o merged.pdf 
+# Merge all PDFs in a folder
+pdf-tools merge pdfs-in-folder scans/ -o merged.pdf
 
-# 5. One-liner: convert images + docs → merge
-pdf-tools process convert-and-merge-pdfs image1.jpg doc1.docx doc2.docx -o final.pdf 
+# Convert images/docs and merge the PDFs
+pdf-tools process convert-and-merge-pdfs image1.jpg doc1.docx doc2.docx -o final.pdf
 
-# 6. Add a diagonal red DRAFT watermark on every page
+# Add a diagonal red DRAFT watermark on every page
 pdf-tools watermark add-text src.pdf stamped.pdf \
     --text "DRAFT" --color "#FF0000" --font-size 72 --opacity 0.2 --rotation 45
 ```
 
-###  Batch LibreOffice Listener (faster)
+### Batch LibreOffice Listener
+
+For repeated Word conversions, run one listener for the whole session. `--port` is the `unoconvert` XMLRPC port; `--uno-port` is the LibreOffice UNO port. Note that `unoserver` needs to have access to the `uno` package that ships with LibreOffice, so it needs to either be installed system-wide or, if using `pipx` for example, needs to have access to the system site packages.
 
 ```bash
-# spin up a listener for the whole session (Linux)
-unoserver --interface 127.0.0.1 --port 2002 &
-export LIBRE_PORT=2002   # used by convert helpers
-pdf-tools process convert-and-merge-pdfs ...
-kill %1                  # when done
+unoserver --interface 127.0.0.1 --port 2003 --uno-port 2002 &
+pdf-tools process convert-and-merge-pdfs doc1.docx doc2.docx -o final.pdf
+kill %1
 ```
 
-## Using the Python API
+## Python API
+
+Common APIs are exported from `pdf_tools`. Functions accept `str`, `Path`, or `File` inputs.
 
 ```python
 from pathlib import Path
-from pdf_tools.convert.service import convert_file_to_pdf
-from pdf_tools.merge.service import merge_pdfs
-from pdf_tools.watermark.models import WatermarkOptions
-from pdf_tools.watermark.service import add_text_watermark
-
-# 1. Convert
-img_pdf = convert_file_to_pdf(
-    input_path=Path("diagram.png"),
-    output_dir=Path("out"),
+from pdf_tools import (
+    WatermarkOptions,
+    add_text_watermark,
+    convert_file_to_pdf,
+    merge_pdfs,
 )
 
-# 2. Merge two PDFs
-merge_pdfs(
-    input_paths=[Path("intro.pdf"), img_pdf.path],
-    output_path=Path("bundle.pdf"),
+# Convert one image to out/diagram.pdf
+img_pdf = convert_file_to_pdf("diagram.png", output_path=Path("out"))
+
+# Merge PDFs
+merged = merge_pdfs(
+    ["intro.pdf", img_pdf.path],
+    output_path="bundle.pdf",
+    set_bookmarks=True,
 )
 
-# 3. Watermark (first page only)
+# Watermark the first page
 opts = WatermarkOptions(text="CONFIDENTIAL", font_size=36, all_pages=False)
-add_text_watermark(src=Path("bundle.pdf"), dst=Path("bundle_wm.pdf"), opts=opts)
+add_text_watermark(src=merged.path, dst="bundle_wm.pdf", opts=opts)
 ```
 
-### Spinning up transient LibreOffice listener
-```python
-from pdf_tools.convert.unoserver_ctx import unoserver_listener
-from pdf_tools.process.service import convert_and_merge_pdfs
+Batch conversion returns structured information about converted and skipped files.
 
-with unoserver_listener(port=2002):            # starts & auto-kills unoserver
+```python
+from pdf_tools import convert_files_to_pdfs
+
+result = convert_files_to_pdfs(["photo.jpg", "notes.txt"], output_dir="out")
+print(result.converted)
+print(result.skipped)
+```
+
+For Word conversion from Python, start a listener before calling conversion helpers.
+
+```python
+from pdf_tools import convert_and_merge_pdfs, unoserver_listener
+
+with unoserver_listener():
     convert_and_merge_pdfs(
-        input_paths=[Path("doc1.docx"), Path("pic.jpg")],
-        output_path=Path("package.pdf"),
+        files=["doc1.docx", "pic.jpg", "appendix.pdf"],
+        output_path="package.pdf",
     )
 ```
 
-## Development setup
+## Development
 
 ```bash
-pipx install unoserver --system-site-packages
 git clone https://github.com/your-org/pdf-tools.git
 cd pdf-tools
-poetry install --with dev   # include dev/test dependencies
+poetry install --with dev
 
-# Run checks
-ruff check .
-mypy .
-pytest -q
+scripts/lint
+pytest -q -m "not slow"
 ```
+
+Slow Word-conversion tests require LibreOffice and working `uno` bindings.

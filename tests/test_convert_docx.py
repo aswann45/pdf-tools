@@ -13,7 +13,8 @@ from tests.conftest import libreoffice_available
 
 
 @pytest.mark.skipif(
-    not libreoffice_available, reason="LibreOffice CLI not found"
+    not libreoffice_available(),
+    reason="LibreOffice/unoserver stack not available",
 )
 @pytest.mark.slow
 def test_docx_conversion(tmp_path: Path) -> None:

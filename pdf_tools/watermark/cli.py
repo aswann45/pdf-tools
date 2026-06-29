@@ -1,16 +1,17 @@
 """CLI surface for the watermark module."""
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from typer import Argument, Option
 
+from pdf_tools.cli import AsyncTyper
 from pdf_tools.models.watermark import WatermarkOptions
 from pdf_tools.typings import Align
 from pdf_tools.watermark.service import add_text_watermark
 
-cli = typer.Typer(help="Add text or image watermarks to PDFs.")
+cli = AsyncTyper(help="Add text watermarks to PDFs.")
 
 
 @cli.command()
@@ -39,15 +40,15 @@ def add_text(
         Option(
             "--rotation",
             "-r",
-            help="Degrees counter-clockwise (90 degree incremeents).",
+            help="Degrees counter-clockwise (90 degree increments).",
         ),
     ] = 0,
     x_position: Annotated[
-        Optional[float],
+        float | None,
         Option("--x-position", "-x", help="X position (pts from left)."),
     ] = None,
     y_position: Annotated[
-        Optional[float],
+        float | None,
         Option("--y-position", "-y", help="Y position (pts from top)."),
     ] = None,
     box_width: Annotated[

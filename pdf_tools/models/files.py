@@ -19,13 +19,19 @@ on type guarantees.
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
-from pydantic import BaseModel, RootModel, computed_field
+from pydantic import BaseModel, Field, RootModel, computed_field
 
 __all__ = [
     "File",
     "Files",
+    "FileInput",
+    "FilesInput",
+    "SkippedFile",
+    "ConversionBatchResult",
+    "coerce_file",
+    "coerce_files",
 ]
 
 
@@ -102,8 +108,8 @@ class Files(RootModel):
     >>> from pdf_tools.models.files import File, Files
     >>> files = Files(
     ...     [
-    ...         File(path_str="report.pdf"),
-    ...         File(path_str="images", bookmark_name="assets"),
+    ...         File(path="report.pdf"),
+    ...         File(path="images", bookmark_name="assets"),
     ...     ]
     ... )
     >>> [f.type for f in files]
@@ -131,3 +137,37 @@ class Files(RootModel):
             a new :class:`Files` instance when *item* is a ``slice``.
         """
         return self.root[item]
+
+
+FileInput: TypeAlias = File | str | Path
+FilesInput: TypeAlias = Files | Sequence[FileInput]
+
+
+class SkippedFile(BaseModel):
+    """A file skipped during a batch operation."""
+
+    path: Path
+    reason: str
+
+
+class ConversionBatchResult(BaseModel):
+    """Structured result for batch conversion helpers."""
+
+    converted: list[File] = Field(default_factory=list)
+    skipped: list[SkippedFile] = Field(default_factory=list)
+
+
+def coerce_file(file: FileInput) -> File:
+    """Normalize a path-like object into a :class:`File` model."""
+    if isinstance(file, File):
+        return file
+    return File(path=Path(file))
+
+
+def coerce_files(files: FilesInput) -> list[File]:
+    """Normalize a sequence of path-like objects into :class:`File` models."""
+    if isinstance(files, Files):
+        return list(files.root)
+    if isinstance(files, (File, str, Path)):
+        raise TypeError("Expected a sequence of files, not a single file.")
+    return [coerce_file(file) for file in files]
