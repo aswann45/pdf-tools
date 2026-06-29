@@ -44,6 +44,8 @@ hypothesis = "^6.136.6"
 reportlab = "^4.4.3"
 types-reportlab = "^4.4.1.20250602"
 coverage = "^7.10.1"
+ruff = "^0.15.20"
+mypy = "^2.1.0"
 
 [tool.mypy]
 python_executable = ".venv/bin/python"
