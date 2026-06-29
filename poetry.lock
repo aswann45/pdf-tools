@@ -61,7 +61,7 @@ version = "25.3.0"
 description = "Classes Without Boilerplate"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "attrs-25.3.0-py3-none-any.whl", hash = "sha256:427318ce031701fea540783410126f03899a97ffc6f61596ad581ac2e40e3bc3"},
     {file = "attrs-25.3.0.tar.gz", hash = "sha256:75d7cefc7fb576747b2c81b4442d4d4a1ce0900973527c011d1030fd3bf4af1b"},
@@ -81,7 +81,7 @@ version = "3.4.2"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 optional = false
 python-versions = ">=3.7"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "charset_normalizer-3.4.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7c48ed483eb946e6c04ccbe02c6b4d1d48e51944b6db70f697e089c193404941"},
     {file = "charset_normalizer-3.4.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b2d318c11350e10662026ad0eb71bb51c7812fc8590825304ae0bdd4ac283acd"},
@@ -203,7 +203,7 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {main = "platform_system == \"Windows\" or sys_platform == \"win32\"", dev = "sys_platform == \"win32\""}
+markers = {main = "platform_system == \"Windows\"", dev = "sys_platform == \"win32\""}
 
 [[package]]
 name = "coverage"
@@ -211,7 +211,7 @@ version = "7.10.1"
 description = "Code coverage measurement for Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "coverage-7.10.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:1c86eb388bbd609d15560e7cc0eb936c102b6f43f31cf3e58b4fd9afe28e1372"},
     {file = "coverage-7.10.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:6b4ba0f488c1bdb6bd9ba81da50715a372119785458831c73428a8566253b86b"},
@@ -330,7 +330,7 @@ version = "6.136.6"
 description = "A library for property-based testing"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "hypothesis-6.136.6-py3-none-any.whl", hash = "sha256:1d6296dde36d42263bd44a084c74e91467e78186676e410167f920aa0374a9e7"},
     {file = "hypothesis-6.136.6.tar.gz", hash = "sha256:2ad2e4f2012be4d41c6515b0628d84d48af6e6c38b4db50840bd9ac0899f5856"},
@@ -382,7 +382,7 @@ version = "2.1.0"
 description = "brain-dead simple config-ini parsing"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760"},
     {file = "iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7"},
@@ -950,7 +950,7 @@ version = "1.6.0"
 description = "plugin and hook calling mechanisms for python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"},
     {file = "pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3"},
@@ -1153,7 +1153,7 @@ version = "8.4.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7"},
     {file = "pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c"},
@@ -1175,7 +1175,7 @@ version = "4.4.3"
 description = "The Reportlab Toolkit"
 optional = false
 python-versions = "<4,>=3.7"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "reportlab-4.4.3-py3-none-any.whl", hash = "sha256:df905dc5ec5ddaae91fc9cb3371af863311271d555236410954961c5ee6ee1b5"},
     {file = "reportlab-4.4.3.tar.gz", hash = "sha256:073b0975dab69536acd3251858e6b0524ed3e087e71f1d0d1895acb50acf9c7b"},
@@ -1257,7 +1257,7 @@ version = "2.4.0"
 description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
 optional = false
 python-versions = "*"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
     {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
@@ -1287,7 +1287,7 @@ version = "4.4.1.20250602"
 description = "Typing stubs for reportlab"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "types_reportlab-4.4.1.20250602-py3-none-any.whl", hash = "sha256:35f23b5a3526fed8cbd5d611673551761280d129ec702467c1d11dd08b8fb971"},
     {file = "types_reportlab-4.4.1.20250602.tar.gz", hash = "sha256:ef26555384e9114e751ac6587740adcb4f241844cf103dd6f6f141d5254c1644"},
@@ -1397,4 +1397,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "<4,>=3.11"
-content-hash = "76fe3a8d28a5c87d10f5ef16c4a19b8bd5425a8527a116f1353ac9a70cab45ae"
+content-hash = "b277f7ee56d3b96a3227a915cf9c0207f4e0a54fa58263824392eeeefbde4cd2"

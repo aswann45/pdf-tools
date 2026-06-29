@@ -14,11 +14,6 @@ dependencies = [
     "pillow (>=11.1.0,<12.0.0)",
     "typer (>=0.15.1,<0.16.0)",
     "pymupdf (>=1.26.3,<2.0.0)",
-    "reportlab (>=4.4.3,<5.0.0)",
-    "pytest (>=8.4.1,<9.0.0)",
-    "hypothesis (>=6.136.3,<7.0.0)",
-    "types-reportlab (>=4.4.1.20250602,<5.0.0.0)",
-    "coverage (>=7.9.2,<8.0.0)",
 ]
 
 [tool.poetry]
@@ -31,7 +26,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 
-[tool.poetry.scripts]
+[project.scripts]
 pdf-tools = "pdf_tools.main:app"
 
 [tool.poetry.group.dev]
@@ -63,3 +58,28 @@ disallow_any_unimported = true
 markers = [
     "slow: marks tests as slow"
 ]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 79
+indent-width = 4
+exclude = ["*/scripts/*", ".pre-commit-config.yaml"]
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "W", "C901", "ERA001"]
+ignore = []
+unfixable = ["B", "ERA001"]
+extend-select = [
+    "UP", "FIX002", "I"
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
