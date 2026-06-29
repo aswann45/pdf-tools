@@ -60,6 +60,28 @@ def test_merge_pdfs_success(tmp_path: Path, monkeypatch: Any) -> None:
     assert merged_file.type == "pdf"
 
 
+def test_merge_pdfs_accepts_pathlike_inputs(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    """Plain paths are accepted without wrapping them in File models."""
+    input1 = tmp_path / "a.pdf"
+    input2 = tmp_path / "b.pdf"
+    _make_blank_pdf(input1)
+    _make_blank_pdf(input2)
+    output_path = tmp_path / "merged.pdf"
+
+    monkeypatch.setattr(
+        "pdf_tools.merge.service.typer.echo", lambda *_args, **_kw: None
+    )
+
+    merged_file = merge_pdfs(
+        files=[input1, str(input2)], output_path=output_path
+    )
+
+    assert output_path.exists()
+    assert merged_file.path == output_path
+
+
 def test_merge_pdfs_raises_when_output_exists(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
