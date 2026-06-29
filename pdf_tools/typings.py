@@ -1,10 +1,10 @@
 """Application-specific types."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Align(str, Enum):
-    """CLI selection helper for horizontal/vertial alignment."""
+class Align(StrEnum):
+    """CLI selection helper for horizontal/vertical alignment."""
 
     CENTER = "center"
     LEFT = "left"

@@ -1,16 +1,16 @@
 """
 Synchronous helpers that turn common document types into *flattened* PDFs.
 
-The conversion layer is intentionally narrow: it only knows how to transform a
-single :class:`pdf_tools.models.files.File` at a time and always writes the
-result **to disk** (returning a new :class:`pdf_tools.models.files.File`
-instance that describes the freshly-minted PDF).  Anything involving bulk or
-parallel work is handled by the surrounding CLI or orchestration layer.
+The conversion layer writes results to disk and returns
+:class:`pdf_tools.models.files.File` instances that describe the freshly
+minted PDFs. Public helpers accept either those models or plain path-like
+inputs.
 
 Supported input types & back-ends
 ---------------------------------
 * **Microsoft Word** (``.doc``/``.docx``) → LibreOffice :mod:`unoconvert` CLI.
-* **Raster images** (``.jpeg``/``.png``) → :mod:`Pillow` + :mod:`img2pdf`.
+* **Raster images** (``.jpg``/``.jpeg``/``.png``/``.tiff``/``.bmp``) →
+  :mod:`Pillow` + :mod:`img2pdf`.
 
 Both back-ends are platform-dependent: LibreOffice must be on ``$PATH`` and
 Pillow relies on system image libraries.  Each helper therefore emits a
@@ -36,16 +36,55 @@ import typer
 from PIL import Image
 
 from pdf_tools.convert.unoserver_ctx import assert_office_ready
-from pdf_tools.models.files import File
+from pdf_tools.models.files import (
+    ConversionBatchResult,
+    File,
+    FileInput,
+    FilesInput,
+    SkippedFile,
+    coerce_file,
+    coerce_files,
+)
 
 __all__: Sequence[str] = [
     "convert_word_to_pdf",
     "convert_image_to_pdf",
     "convert_file_to_pdf",
+    "convert_files_to_pdfs",
+    "convert_folder_to_pdfs",
+    "UnsupportedFileTypeError",
 ]
 
 SUPPORTED_IMAGE_FORMATS: set[str] = {"jpeg", "png", "jpg", "tiff", "bmp"}
+SUPPORTED_WORD_FORMATS: set[str] = {"doc", "docx"}
+SUPPORTED_FILE_FORMATS: set[str] = (
+    SUPPORTED_IMAGE_FORMATS | SUPPORTED_WORD_FORMATS
+)
 _UNOCONVERT_CMD: Final[str] = "unoconvert"
+
+
+class UnsupportedFileTypeError(ValueError):
+    """Raised when no converter exists for a file type."""
+
+    def __init__(self, file: File) -> None:
+        file_type = f".{file.type}" if file.type else "no extension"
+        supported = ", ".join(
+            f".{suffix}" for suffix in sorted(SUPPORTED_FILE_FORMATS)
+        )
+        super().__init__(
+            f"Unsupported file type for '{file.path}': {file_type}. "
+            f"Supported types: {supported}."
+        )
+
+
+def _resolve_output_path(file: File, output_path: str | Path | None) -> Path:
+    if output_path is None:
+        return file.absolute_path.with_suffix(".pdf")
+
+    path = Path(output_path)
+    if path.suffix == "":
+        return (path / file.path.stem).with_suffix(".pdf")
+    return path
 
 
 def _output_dir_handler(input_path: Path, output_dir: Path) -> Path:
@@ -74,17 +113,17 @@ def _output_dir_handler(input_path: Path, output_dir: Path) -> Path:
 
 
 def convert_word_to_pdf(
-    file: File,
-    output_path: Path | None = None,
+    file: FileInput,
+    output_path: str | Path | None = None,
     overwrite: bool = False,
 ) -> File:
     """Convert a Word document (``.doc``, ``.docx``) to PDF on disk.
 
     Parameters
     ----------
-    file : :class:`File`
-        A *Word* :class:`pdf_tools.models.files.File` (:attr:`file.type` must
-        be either ``"doc"`` or ``"docx"``).
+    file : :class:`File` | :class:`str` | :class:`Path`
+        A Word document path or :class:`pdf_tools.models.files.File`
+        (:attr:`file.type` must be either ``"doc"`` or ``"docx"``).
     output_path : :class:`Path` | :class:`None`, optional
         Destination path for the resulting PDF.  When *None* (default) the
         helper replaces the source extension with ``.pdf`` next to the input
@@ -107,17 +146,10 @@ def convert_word_to_pdf(
     FileNotFoundError
         If `output_path`'s parent directory does not exist.
     """
+    file = coerce_file(file)
     assert_office_ready()
     typer.echo(f"Converting {file.path.resolve()}")
-    if output_path is not None:
-        if output_path.suffix == "":
-            # we think this is a directory
-            new_path = (output_path / file.path.stem).with_suffix(".pdf")
-        elif output_path.suffix != "":
-            # we think it's a filename
-            new_path = output_path
-    else:
-        new_path = file.absolute_path.with_suffix(".pdf")
+    new_path = _resolve_output_path(file, output_path)
 
     if new_path.exists() and overwrite is False:
         raise FileExistsError(f"File {new_path} already exists. Exiting.")
@@ -133,7 +165,7 @@ def convert_word_to_pdf(
             [
                 _UNOCONVERT_CMD,
                 str(file.absolute_path),
-                new_path,
+                str(new_path),
             ],
             check=True,
             capture_output=True,
@@ -150,7 +182,9 @@ def convert_word_to_pdf(
 
 
 def convert_image_to_pdf(
-    file: File, output_path: Path | None = None, overwrite: bool = False
+    file: FileInput,
+    output_path: str | Path | None = None,
+    overwrite: bool = False,
 ) -> File:
     """Convert a single raster image to a *vector-wrapped* PDF.
 
@@ -159,9 +193,10 @@ def convert_image_to_pdf(
 
     Parameters
     ----------
-    file : :class:`File`
-        Source image (``jpg``, ``jpeg``, ``tiff``, ``bmp``, or ``png``).
-        Other types raise ``ValueError``.
+    file : :class:`File` | :class:`str` | :class:`Path`
+        Source image path or :class:`pdf_tools.models.files.File`
+        (``jpg``, ``jpeg``, ``tiff``, ``bmp``, or ``png``). Other types raise
+        ``ValueError``.
     output_path : :class:`pathlib.Path` | `None`, optional
         Destination path for the resulting PDF.  Defaults to the input path
         with ``.pdf`` extension.
@@ -184,17 +219,9 @@ def convert_image_to_pdf(
     FileExistsError
         If `overwrite` is False and the output path already exists.
     """
+    file = coerce_file(file)
     typer.echo(f"Converting {file.path.resolve()}")
-
-    if output_path is not None:
-        if output_path.suffix == "":
-            # we think this is a directory
-            new_path = (output_path / file.path.stem).with_suffix(".pdf")
-        elif output_path.suffix != "":
-            # we think it's a filename
-            new_path = output_path
-    else:
-        new_path = file.absolute_path.with_suffix(".pdf")
+    new_path = _resolve_output_path(file, output_path)
 
     if new_path.exists() and overwrite is False and new_path.is_file():
         raise FileExistsError(f"File {new_path} already exists. Exiting.")
@@ -207,7 +234,8 @@ def convert_image_to_pdf(
         )
     try:
         with Image.open(file.absolute_path) as image:
-            if image.format.lower() not in SUPPORTED_IMAGE_FORMATS:
+            image_format = (image.format or "").lower()
+            if image_format not in SUPPORTED_IMAGE_FORMATS:
                 raise ValueError(
                     f"Unsupported image format '{image.format}'. "
                     f"Supported formats: "
@@ -229,21 +257,21 @@ def convert_image_to_pdf(
 
 
 def convert_file_to_pdf(
-    file: File,
-    output_path: Path | None = None,
+    file: FileInput,
+    output_path: str | Path | None = None,
     overwrite: bool = False,
 ) -> File:
     """Dispatch `file` to the appropriate conversion helper.
 
     Inspects :attr:`file.type <pdf_tools.models.files.File.type>`
     and forwards the call to either :func:`convert_word_to_pdf` or
-    :func:`convert_image_to_pdf`.  Unsupported types return the `file` object
-    unchanged so callers can safely chain operations.
+    :func:`convert_image_to_pdf`. Unsupported types raise
+    :class:`UnsupportedFileTypeError`.
 
     Parameters
     ----------
-    file : :class:`File`
-        Any :class:`pdf_tools.models.files.File` instance.
+    file : :class:`File` | :class:`str` | :class:`Path`
+        Any path-like input or :class:`pdf_tools.models.files.File` instance.
     output_path : `pathlib.Path` | `None`, optional
         Desired output path.  Passed verbatim to the underlying helper.
     overwrite : `bool`, default ``False``
@@ -252,19 +280,60 @@ def convert_file_to_pdf(
     Returns
     -------
     :class:`File`
-        Either the converted PDF description or the original :class:`File` if
-        no conversion rule matched.
+        The converted PDF description.
 
     Raises
     ------
-    ValueError
+    UnsupportedFileTypeError
         If an unsupported file type is provided.
     """
-    if file.type in ["doc", "docx"]:
+    file = coerce_file(file)
+    file_type = file.type.lower()
+
+    if file_type in SUPPORTED_WORD_FORMATS:
         return convert_word_to_pdf(file, output_path, overwrite=overwrite)
 
-    if file.type in ["jpg", "jpeg", "png"]:
+    if file_type in SUPPORTED_IMAGE_FORMATS:
         return convert_image_to_pdf(file, output_path, overwrite=overwrite)
 
-    else:
-        raise ValueError(f"Unsupported file type: {file.type}.")
+    raise UnsupportedFileTypeError(file)
+
+
+def convert_files_to_pdfs(
+    files: FilesInput,
+    output_dir: str | Path | None = None,
+    overwrite: bool = False,
+) -> ConversionBatchResult:
+    """Convert many files to PDFs, skipping failures."""
+    target_dir = Path.cwd() if output_dir is None else Path(output_dir)
+    converted: list[File] = []
+    skipped: list[SkippedFile] = []
+
+    for file in coerce_files(files):
+        try:
+            converted.append(
+                convert_file_to_pdf(
+                    file,
+                    output_path=_output_dir_handler(file.path, target_dir),
+                    overwrite=overwrite,
+                )
+            )
+        except (RuntimeError, ValueError, OSError) as ex:
+            skipped.append(SkippedFile(path=file.path, reason=str(ex)))
+
+    return ConversionBatchResult(converted=converted, skipped=skipped)
+
+
+def convert_folder_to_pdfs(
+    input_dir: str | Path,
+    output_dir: str | Path | None = None,
+    overwrite: bool = False,
+) -> ConversionBatchResult:
+    """Convert immediate children of a folder to PDFs."""
+    folder = Path(input_dir)
+    files = [File(path=file) for file in folder.iterdir()]
+    return convert_files_to_pdfs(
+        files,
+        output_dir=output_dir,
+        overwrite=overwrite,
+    )

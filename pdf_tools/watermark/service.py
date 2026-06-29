@@ -20,17 +20,17 @@ def _iter_target_pages(  # type: ignore[no-any-unimported]
 
 def add_text_watermark(
     *,
-    src: Path,
-    dst: Path,
+    src: str | Path,
+    dst: str | Path,
     opts: WatermarkOptions,
 ) -> WatermarkResult:
     """Stamp *text* onto a PDF using :mod:`PyMuPDF`.
 
     Parameters
     ----------
-    src : :class:`Path`
+    src : :class:`str` | :class:`Path`
         Input PDF path.
-    dst : :class:`Path`
+    dst : :class:`str` | :class:`Path`
         Output PDF path.
     opts : :class:`WatermarkOptions`
         Styling & placement options; see
@@ -46,6 +46,8 @@ def add_text_watermark(
     ValueError
         If source and destination paths are the same.
     """
+    src = Path(src)
+    dst = Path(dst)
     if src == dst:
         raise ValueError("Source and destination paths must differ.")
 

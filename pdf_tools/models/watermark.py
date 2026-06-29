@@ -47,8 +47,7 @@ class WatermarkOptions(BaseModel):
         Horizontal text alignment within textbox. One of "center," "left," or
         "right."
     v_align : `str`, default "center"
-        Vertical text alignment within textbox. One of "center," "left," or
-        "right."
+        Reserved for future vertical alignment support.
     all_pages : `bool`, default ``True``
         Apply formatting to all pages if ``True``. If ``False``, only apply
         formatting to first page.
@@ -59,7 +58,7 @@ class WatermarkOptions(BaseModel):
     font_name: str = "helv"  # built-in Helvetica alias in MuPDF
     lineheight: float = Field(
         default=1.0,
-        description="Factor to increase/decrese vertical text spacing.",
+        description="Factor to increase/decrease vertical text spacing.",
     )
     rotation: float = Field(
         default=0.0, description="degrees, multiples of 90", multiple_of=90.0

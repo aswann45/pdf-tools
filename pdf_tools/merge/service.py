@@ -33,7 +33,7 @@ from pathlib import Path
 import typer
 from pypdf import PdfWriter
 
-from pdf_tools.models.files import File
+from pdf_tools.models.files import File, FilesInput, coerce_files
 
 __all__ = [
     "merge_pdfs",
@@ -41,8 +41,8 @@ __all__ = [
 
 
 def merge_pdfs(
-    files: Sequence[File],
-    output_path: Path,
+    files: FilesInput,
+    output_path: str | Path,
     set_bookmarks: bool = False,
     overwrite: bool = False,
 ) -> File:
@@ -50,10 +50,10 @@ def merge_pdfs(
 
     Parameters
     ----------
-    files : :class:`Sequence[File]`
-        Ordered iterable of :class:`pdf_tools.models.files.File` instances to
-        merge.  Non-PDF entries are skipped after emitting a warning via
-        :mod:`typer`.
+    files : :class:`Sequence[File | str | Path]`
+        Ordered iterable of path-like inputs or
+        :class:`pdf_tools.models.files.File` instances to merge. Non-PDF
+        entries are skipped after emitting a warning via :mod:`typer`.
     output_path: :class:`pathlib.Path`
         Filesystem path where the merged PDF will be written.  A ``.pdf``
         extension is not enforced but is *highly* recommended to avoid viewer
@@ -101,9 +101,11 @@ def merge_pdfs(
     >>> merged.type
     'pdf'
     """
+    output_path = Path(output_path)
     merger = PdfWriter()
-    for file in files:
-        if file.type != "pdf":
+    normalized_files: Sequence[File] = coerce_files(files)
+    for file in normalized_files:
+        if file.type.lower() != "pdf":
             typer.echo(
                 f"Skipping {file.path.resolve()} because it is not a PDF"
             )
