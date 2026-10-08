@@ -7,9 +7,9 @@ Commands
 * ``files-to-pdfs``   – convert an explicit list *or* JSON bundle of paths.
 * ``folder-to-pdfs``  – convert **every** supported file in a directory.
 
-Each command wraps :func:`pdf_tools.convert.service.convert_file_to_pdf`,
-ensuring that business logic stays in the service layer while the CLI focuses
-on parameter parsing, user feedback, and error handling.
+The CLI starts a temporary ``unoserver`` listener when Word inputs require
+one. Batch commands report skipped files and succeed if any input converted.
+Output parent directories must already exist.
 """
 
 from collections.abc import Sequence
@@ -100,9 +100,10 @@ def files_to_pdfs(
         typer.Option(help="Overwrite output files if they already exist."),
     ] = False,
 ) -> ConversionBatchResult:
-    """Convert many documents to PDFs.
+    """Convert many documents; report failures and continue.
 
-    Use ``--json-file`` when the file list is too long for the shell.
+    Use ``--json-file`` when the file list is too long for the shell. The
+    output directory must exist. Exit code is 1 only if none converted.
     """
     if (file_paths is None) == (json_file is None):
         raise typer.BadParameter(
@@ -158,9 +159,10 @@ def folder_to_pdfs(
         typer.Option(help="Overwrite output files if they already exist."),
     ] = False,
 ) -> ConversionBatchResult:
-    """Convert every supported file in *input_dir*.
+    """Convert supported files in *input_dir*, reporting skipped inputs.
 
-    The scan is non-recursive; it only checks the folder's first level.
+    The scan is non-recursive; it only checks the folder's first level. The
+    output directory must exist. Exit code is 1 only if none converted.
     """
     folder = Path(input_dir)
     files = [File.model_validate({"path": file}) for file in folder.iterdir()]

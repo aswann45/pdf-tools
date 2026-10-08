@@ -4,10 +4,9 @@ Typer commands for batch PDF processing.
 Typer command that **converts** a batch of files to PDF *and then merges* them
 into a single document.
 
-This wrapper around :func:`pdf_tools.process.service.convert_and_merge_pdfs`
-provides the simplest possible UX for users who only care about the final PDF.
-They can supply paths directly or hand over a JSON bundle produced by other
-commands.
+Inputs may be supplied directly or as a JSON bundle. The CLI starts a
+temporary ``unoserver`` listener if any Word input is present. The process
+service is best-effort and can silently omit inputs that fail conversion.
 """
 
 from collections.abc import Sequence
@@ -70,7 +69,7 @@ def convert_and_merge_pdfs(
         typer.Option(help="Overwrite output files if they already exist."),
     ] = False,
 ) -> None:
-    """Convert inputs to PDF, then merge them."""
+    """Convert inputs and merge successes; failures may be omitted."""
     if (file_paths is None) == (json_file is None):
         raise typer.BadParameter(
             "Provide *either* input paths *or* --json-file, not both."

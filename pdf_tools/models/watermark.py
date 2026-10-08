@@ -31,10 +31,10 @@ class WatermarkOptions(BaseModel):
     rotation : `float`, default 0.0
         Text rotation in degrees. Must be multiple of 90.
     opacity : `float`, default 0.15
-        Text opacity.
+        Text opacity, from 0 to 1.
     color : `str` | `tuple[float, float, float]`, default "#FF0000"
         Text color as either a 3- or 6-character hex string or
-        3-tuple float value.
+        3-tuple of float values.
     x : `float` | `None`, default `None`
         Horizontal position, center if None.
     y : `float` | `None`, default `None`
@@ -65,7 +65,7 @@ class WatermarkOptions(BaseModel):
     )
     opacity: Annotated[float, Field(ge=0.0, le=1.0)] = 0.15
     color: str | tuple[float, float, float] = Field(
-        default="#FF0000", description="hex or 0-1 tuple"
+        default="#FF0000", description="hex or three-float tuple"
     )
     x: float | None = Field(
         default=None, description="horizontal position, center if None"

@@ -44,7 +44,13 @@ def assert_office_ready(
     *,
     port: int | None = None,
 ) -> None:
-    """Fail fast with guidance if LibreOffice/`unoserver` is not usable."""
+    """Check for ``unoconvert`` and a listener on the XMLRPC port.
+
+    Raises
+    ------
+    RuntimeError
+        If ``unoconvert`` is absent or no listener responds in time.
+    """
     if port is not None:
         xmlrpc_port = port
     if shutil.which("unoconvert") is None:
@@ -95,6 +101,8 @@ def unoserver_listener(
         found.
     TimeoutError
         If the listener does not start within the allotted timeout.
+    ValueError
+        If the XMLRPC and UNO ports are the same.
     """
     if port is not None:
         uno_port = port

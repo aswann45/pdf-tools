@@ -50,12 +50,12 @@ def merge_pdfs(
 
     Parameters
     ----------
-    files : :class:`Sequence[File | str | Path]`
-        Ordered iterable of path-like inputs or
-        :class:`pdf_tools.models.files.File` instances to merge. Non-PDF
-        entries are skipped after emitting a warning via :mod:`typer`.
-    output_path: :class:`pathlib.Path`
-        Filesystem path where the merged PDF will be written.  A ``.pdf``
+    files : Files | Sequence[File | str | Path]
+        Ordered inputs to merge. Non-PDF entries are skipped after emitting
+        a warning. Pass files explicitly in the desired order.
+    output_path : str | Path
+        Filesystem path where the merged PDF will be written. Its parent
+        directory must exist. A ``.pdf``
         extension is not enforced but is *highly* recommended to avoid viewer
         confusion.
     set_bookmarks : `bool`, default ``False``
