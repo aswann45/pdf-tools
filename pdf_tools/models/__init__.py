@@ -1,3 +1,11 @@
+from .extraction import (
+    DocumentExtraction,
+    ExtractedImage,
+    ExtractionOptions,
+    OcrMode,
+    PageExtraction,
+    TextSource,
+)
 from .files import (
     ConversionBatchResult,
     File,
@@ -11,6 +19,12 @@ from .files import (
 from .watermark import WatermarkOptions, WatermarkResult
 
 __all__ = [
+    "DocumentExtraction",
+    "ExtractedImage",
+    "ExtractionOptions",
+    "OcrMode",
+    "PageExtraction",
+    "TextSource",
     "ConversionBatchResult",
     "File",
     "FileInput",
