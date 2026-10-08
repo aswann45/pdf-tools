@@ -2,9 +2,9 @@
 Synchronous helpers that turn common document types into *flattened* PDFs.
 
 The conversion layer writes results to disk and returns
-:class:`pdf_tools.models.files.File` instances that describe the freshly
-minted PDFs. Public helpers accept either those models or plain path-like
-inputs.
+:class:`pdf_tools.models.files.File` instances that describe the PDFs.
+Single-file helpers accept those models or ``str``/``Path`` inputs; batch
+helpers accept :class:`pdf_tools.models.files.Files` or a sequence of them.
 
 Supported input types & back-ends
 ---------------------------------
@@ -12,17 +12,16 @@ Supported input types & back-ends
 * **Raster images** (``.jpg``/``.jpeg``/``.png``/``.tiff``/``.bmp``) →
   :mod:`Pillow` + :mod:`img2pdf`.
 
-Both back-ends are platform-dependent: LibreOffice must be on ``$PATH`` and
-Pillow relies on system image libraries.  Each helper therefore emits a
-:meth:`typer.echo` so the CLI shows *progress* but your own code can swap it
-for a custom logger.
+Word conversion requires LibreOffice and a working ``unoserver`` listener for
+``unoconvert``. CLI commands manage the listener when needed; direct service
+callers must manage it themselves.
 
 Design notes
 ------------
 * All functions are **blocking** and may run external processes; call them in a
   ThreadPool if you need async flows.
-* The helpers never *overwrite* an existing file unless the caller explicitly
-  points *output_path* to an existing location.
+* Output parent directories must already exist. Existing outputs are protected
+  unless ``overwrite=True``.
 """
 
 import subprocess
@@ -122,12 +121,14 @@ def convert_word_to_pdf(
     Parameters
     ----------
     file : :class:`File` | :class:`str` | :class:`Path`
-        A Word document path or :class:`pdf_tools.models.files.File`
-        (:attr:`file.type` must be either ``"doc"`` or ``"docx"``).
-    output_path : :class:`Path` | :class:`None`, optional
-        Destination path for the resulting PDF.  When *None* (default) the
-        helper replaces the source extension with ``.pdf`` next to the input
-        file.
+        A Word document path or :class:`pdf_tools.models.files.File`. This
+        direct helper passes the source to ``unoconvert``; it does not check
+        the extension. The dispatcher selects it for ``.doc`` and ``.docx``.
+    output_path : str | Path | None, optional
+        Destination PDF path, or a directory when no suffix is supplied.
+        When *None*, replace the source extension with ``.pdf`` beside the
+        input. The output parent directory must exist. Direct callers must
+        provide a running ``unoserver`` listener.
     overwrite : `bool`, default ``False``
         Overwrite output file if it already exists.
 
@@ -142,9 +143,11 @@ def convert_word_to_pdf(
     FileExistsError
         If `overwrite` is False and the output path already exists.
     RuntimeError
-        If LibreOffice exits with a non-zero status.
+        If ``unoconvert`` or its listener is unavailable, or conversion fails.
     FileNotFoundError
         If `output_path`'s parent directory does not exist.
+    ValueError
+        If the resolved output path is a directory.
     """
     file = coerce_file(file)
     assert_office_ready()
@@ -186,20 +189,24 @@ def convert_image_to_pdf(
     output_path: str | Path | None = None,
     overwrite: bool = False,
 ) -> File:
-    """Convert a single raster image to a *vector-wrapped* PDF.
+    """Convert one supported raster image to PDF.
 
-    The routine uses :mod:`Pillow` to normalise color mode and :mod:`img2pdf`
-    to wrap the image bytes without re-encoding (lossless).
+    Pillow opens the source and checks its detected format against the
+    supported allowlist. Non-RGB images are converted to RGB, then the image
+    is encoded as PNG in memory. ``img2pdf`` builds the PDF from those PNG
+    bytes. Source bytes are not passed through unchanged: JPEG data may be
+    re-encoded, metadata may be lost, and large images may use extra memory.
 
     Parameters
     ----------
     file : :class:`File` | :class:`str` | :class:`Path`
-        Source image path or :class:`pdf_tools.models.files.File`
-        (``jpg``, ``jpeg``, ``tiff``, ``bmp``, or ``png``). Other types raise
-        ``ValueError``.
-    output_path : :class:`pathlib.Path` | `None`, optional
-        Destination path for the resulting PDF.  Defaults to the input path
-        with ``.pdf`` extension.
+        Source image path or :class:`pdf_tools.models.files.File`. This direct
+        helper checks Pillow's detected format against JPEG, PNG, TIFF, and
+        BMP. The dispatcher additionally requires a supported extension.
+    output_path : str | Path | None, optional
+        Destination PDF path, or a directory when no suffix is supplied.
+        Defaults to the input path with ``.pdf`` extension. The output parent
+        directory must exist.
     overwrite : bool, default ``False``
         Overwrite output file if it already exists.
 
@@ -210,10 +217,10 @@ def convert_image_to_pdf(
 
     Raises
     ------
+    RuntimeError
+        If Pillow cannot read the image or its detected format is unsupported.
     ValueError
-        If :attr:`file.type` is not a supported image format.
-    OSError
-        If `Pillow` cannot read or decode the image.
+        If the resolved output path is a directory.
     FileNotFoundError
         If `output_path`'s parent directory does not exist.
     FileExistsError
@@ -241,10 +248,11 @@ def convert_image_to_pdf(
                     f"Supported formats: "
                     f"{', '.join(sorted(SUPPORTED_IMAGE_FORMATS))}."
                 )
-            if image.mode != "RGB":
-                image = image.convert("RGB")
+            normalized_image = (
+                image if image.mode == "RGB" else image.convert("RGB")
+            )
             buffer = BytesIO()
-            image.save(buffer, format="PNG")
+            normalized_image.save(buffer, format="PNG")
             with open(new_path, "wb") as pdf:
                 pdf_bytes = img2pdf.convert(buffer.getvalue())
                 pdf.write(pdf_bytes)
@@ -272,8 +280,9 @@ def convert_file_to_pdf(
     ----------
     file : :class:`File` | :class:`str` | :class:`Path`
         Any path-like input or :class:`pdf_tools.models.files.File` instance.
-    output_path : `pathlib.Path` | `None`, optional
-        Desired output path.  Passed verbatim to the underlying helper.
+    output_path : str | Path | None, optional
+        Desired output path. Resolved by the selected helper; its parent must
+        exist.
     overwrite : `bool`, default ``False``
         Overwrite output file if it already exists.
 
@@ -286,6 +295,14 @@ def convert_file_to_pdf(
     ------
     UnsupportedFileTypeError
         If an unsupported file type is provided.
+    FileExistsError
+        If the output exists and ``overwrite`` is false.
+    FileNotFoundError
+        If the output parent directory does not exist.
+    ValueError
+        If the resolved output path is a directory.
+    RuntimeError
+        If image or Word conversion fails, including unavailable Word tools.
     """
     file = coerce_file(file)
     file_type = file.type.lower()
@@ -304,7 +321,30 @@ def convert_files_to_pdfs(
     output_dir: str | Path | None = None,
     overwrite: bool = False,
 ) -> ConversionBatchResult:
-    """Convert many files to PDFs, skipping failures."""
+    """Convert a batch and record individual failures without stopping.
+
+    Parameters
+    ----------
+    files : Files | Sequence[File | str | Path]
+        Inputs to convert in the given sequence.
+    output_dir : str | Path | None, optional
+        Existing output directory; defaults to the current directory. A
+        missing directory produces one skipped result per input.
+    overwrite : bool, default False
+        Replace existing output PDFs when true.
+
+    Returns
+    -------
+    ConversionBatchResult
+        ``converted`` lists successful PDFs; ``skipped`` lists failed inputs
+        and their reasons. Both may be populated or empty. The function does
+        not start a Word-conversion listener for direct Python callers.
+
+    Raises
+    ------
+    TypeError
+        If ``files`` is a single path or :class:`File`, not a sequence.
+    """
     target_dir = Path.cwd() if output_dir is None else Path(output_dir)
     converted: list[File] = []
     skipped: list[SkippedFile] = []
@@ -329,7 +369,30 @@ def convert_folder_to_pdfs(
     output_dir: str | Path | None = None,
     overwrite: bool = False,
 ) -> ConversionBatchResult:
-    """Convert immediate children of a folder to PDFs."""
+    """Convert immediate children of a folder using batch semantics.
+
+    Parameters
+    ----------
+    input_dir : str | Path
+        Folder to enumerate without recursion.
+    output_dir : str | Path | None, optional
+        Existing output directory; defaults to the current directory.
+    overwrite : bool, default False
+        Replace existing output PDFs when true.
+
+    Returns
+    -------
+    ConversionBatchResult
+        Successful conversions and skipped inputs with reasons.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``input_dir`` does not exist. A missing *output* directory is
+        recorded as skipped results instead.
+    NotADirectoryError
+        If ``input_dir`` is not a directory.
+    """
     folder = Path(input_dir)
     files = [File(path=file) for file in folder.iterdir()]
     return convert_files_to_pdfs(

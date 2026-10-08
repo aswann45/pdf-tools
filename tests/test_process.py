@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from PIL import Image
 from pypdf import PdfReader
 
@@ -25,3 +26,31 @@ def test_convert_and_merge_accepts_paths_and_existing_pdfs(
 
     assert result.path == out
     assert len(PdfReader(out).pages) == 3
+
+
+def test_process_merges_successes_after_conversion_failure(
+    tmp_path: Path,
+) -> None:
+    """Failed conversions are omitted while valid PDFs merge."""
+    existing = tmp_path / "existing.pdf"
+    image = tmp_path / "image.png"
+    unsupported = tmp_path / "unsupported.txt"
+    output = tmp_path / "merged.pdf"
+    make_pdf(existing, pages=2)
+    Image.new("RGB", (10, 10)).save(image)
+    unsupported.write_text("cannot convert")
+
+    convert_and_merge_pdfs([existing, unsupported, image], output_path=output)
+
+    assert len(PdfReader(output).pages) == 3
+
+
+def test_process_requires_existing_output_parent(tmp_path: Path) -> None:
+    """A retained PDF reaches merge, which rejects a missing output parent."""
+    existing = tmp_path / "existing.pdf"
+    make_pdf(existing, pages=1)
+
+    with pytest.raises(FileNotFoundError, match="Output directory"):
+        convert_and_merge_pdfs(
+            [existing], output_path=tmp_path / "missing" / "merged.pdf"
+        )

@@ -59,7 +59,13 @@ def test_pathlike_png_to_pdf(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     ("extension", "image_format"),
-    [("bmp", "BMP"), ("tiff", "TIFF")],
+    [
+        ("jpg", "JPEG"),
+        ("jpeg", "JPEG"),
+        ("png", "PNG"),
+        ("tiff", "TIFF"),
+        ("bmp", "BMP"),
+    ],
 )
 def test_supported_image_formats_dispatch(
     tmp_path: Path, extension: str, image_format: str
@@ -73,12 +79,18 @@ def test_supported_image_formats_dispatch(
     assert pdf_file.path.stat().st_size > 0
 
 
-def test_unsupported_format(tmp_path: Path) -> None:
-    """GIF raises ValueError (per docstring)."""
-    gif = tmp_path / "bad.gif"
-    Image.new("RGB", (50, 50)).save(gif, format="GIF")
+@pytest.mark.parametrize(
+    ("extension", "image_format"),
+    [("gif", "GIF"), ("webp", "WEBP")],
+)
+def test_unsupported_format(
+    tmp_path: Path, extension: str, image_format: str
+) -> None:
+    """Pillow-readable formats outside the allowlist are rejected."""
+    image = tmp_path / f"bad.{extension}"
+    Image.new("RGB", (50, 50)).save(image, format=image_format)
     with pytest.raises(ValueError, match="Unsupported file type"):
-        convert_file_to_pdf(file=File(path=gif), output_path=tmp_path)
+        convert_file_to_pdf(file=File(path=image), output_path=tmp_path)
 
 
 SERVICE_PATH: Final = (
@@ -283,6 +295,22 @@ def test_batch_conversion_reports_skipped_unsupported(
     assert len(result.skipped) == 1
     assert result.skipped[0].path == bad_file
     assert "Unsupported file type" in result.skipped[0].reason
+
+
+def test_batch_conversion_reports_missing_output_directory(
+    tmp_path: Path,
+) -> None:
+    """A missing output directory becomes a skipped batch result."""
+    image = tmp_path / "image.png"
+    Image.new("RGB", (10, 10)).save(image)
+
+    result = service.convert_files_to_pdfs(
+        [image], output_dir=tmp_path / "missing"
+    )
+
+    assert result.converted == []
+    assert [item.path for item in result.skipped] == [image]
+    assert "Output directory" in result.skipped[0].reason
 
 
 def test_image_rgb_conversion(

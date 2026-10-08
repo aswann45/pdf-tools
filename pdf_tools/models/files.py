@@ -3,23 +3,21 @@ Core data models that represent filesystem artefacts used by :mod:`pdf-tools`.
 
 The public surface of the library manipulates files and directories in many
 places—CLI converters, merger utilities, and the processing pipeline.  To keep
-those layers loosely-coupled and testable we expose two small, fully-typed
+those layers loosely-coupled and testable we expose two small
 :mod:`pydantic` v2 models:
 
 * :class:`File`  - a single file or directory on disk, enriched with lazily
   computed convenience attributes (name, parent, suffix, etc.).
-* :class:`Files` - a lightweight container that wraps an ordered collection of
-  :class:`File` instances but still behaves like a regular :class:`Sequence`
-  for idiomatic iteration and indexing.
+* :class:`Files` - a container for an ordered collection of :class:`File`
+  instances with iteration, indexing, and slicing.
 
-Both models deliberately avoid any I/O side-effects; they merely *describe*
-paths.  All validations happen eagerly via Pydantic so downstream code can rely
-on type guarantees.
+These models do not mutate files on disk. Some computed properties inspect
+filesystem state. Pydantic validates the supplied fields eagerly.
 """
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, overload
 
 from pydantic import BaseModel, Field, RootModel, computed_field
 
@@ -40,18 +38,17 @@ class File(BaseModel):
 
     Parameters
     ----------
-    path : :class:`Path`
-        Path supplied by the caller.  It can be absolute or relative; the
+    path : Path | str
+        Path supplied by the caller. It can be absolute or relative; the
         :attr:`absolute_path` property resolves it.
     bookmark_name : `str` | `None`, optional
-        Optional human-friendly alias that a user may register via the CLI so
-        they can reference the path later without typing the full string.
+        Optional outline title when merging with ``set_bookmarks=True``. If
+        omitted or empty, the merge service uses the filename.
 
     Notes
     -----
-    *The model does **not** check whether the given path exists.*  This
-    decision lets higher-level services decide when (and if) to touch the
-    filesystem. Use :attr:`absolute_path.exists` in those layers if needed.
+    Construction does not require the path to exist. The computed ``type``
+    property checks whether the resolved path is a directory.
     """
 
     path: Path
@@ -100,8 +97,8 @@ class Files(RootModel):
     This wrapper:
 
     * Preserves Pydantic's validation and serialisation features.
-    * Implements ``__iter__`` and ``__getitem__`` so it quacks like a normal
-      sequence in most contexts (``for f in files: ...``).
+    * Supports iteration and integer indexing. Slicing returns the underlying
+      sequence's slice, not another :class:`Files` model.
 
     Examples
     --------
@@ -122,7 +119,13 @@ class Files(RootModel):
         """Return an iterator over the underlying :class:`File` objects."""
         return iter(self.root)
 
-    def __getitem__(self, item: Any) -> Any:
+    @overload
+    def __getitem__(self, item: int) -> File: ...
+
+    @overload
+    def __getitem__(self, item: slice) -> Sequence[File]: ...
+
+    def __getitem__(self, item: int | slice) -> File | Sequence[File]:
         """Return *item* from the underlying sequence.
 
         Parameters
@@ -132,9 +135,9 @@ class Files(RootModel):
 
         Returns
         -------
-        File | Files
+        File | Sequence[File]
             A single :class:`File` when *item* is an ``int``;
-            a new :class:`Files` instance when *item* is a ``slice``.
+            a slice of the underlying sequence when *item* is a ``slice``.
         """
         return self.root[item]
 
@@ -144,14 +147,18 @@ FilesInput: TypeAlias = Files | Sequence[FileInput]
 
 
 class SkippedFile(BaseModel):
-    """A file skipped during a batch operation."""
+    """A batch input that failed conversion, with its path and error reason."""
 
     path: Path
     reason: str
 
 
 class ConversionBatchResult(BaseModel):
-    """Structured result for batch conversion helpers."""
+    """Batch result with successful PDFs and inputs skipped on failure.
+
+    ``converted`` contains generated PDF :class:`File` models. ``skipped``
+    contains each failed input and its reason; both lists may be populated.
+    """
 
     converted: list[File] = Field(default_factory=list)
     skipped: list[SkippedFile] = Field(default_factory=list)

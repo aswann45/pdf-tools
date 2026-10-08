@@ -121,7 +121,10 @@ def pdfs_in_folder(
         typer.Option(help="Overwrite output files if they already exist."),
     ] = False,
 ) -> None:
-    """Merge all PDFs found in *input_dir_path*."""
+    """Merge PDFs in filesystem enumeration order, not guaranteed alphabetical.
+
+    Pass files explicitly to ``pdf-files`` when their order matters.
+    """
     if output_path is None:
         output_path = Path().cwd() / "output.pdf"
     files = [

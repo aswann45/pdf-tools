@@ -6,16 +6,16 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
-import pymupdf  # type: ignore[import-untyped]
+import pymupdf
 
 from pdf_tools.models.files import File
 from pdf_tools.models.watermark import WatermarkOptions, WatermarkResult
 
 
-def _iter_target_pages(  # type: ignore[no-any-unimported]
+def _iter_target_pages(
     doc: pymupdf.Document, *, all_pages: bool
 ) -> Iterable[pymupdf.Page]:
-    return doc if all_pages else [doc[0]]
+    return doc if all_pages else [doc[0]]  # type: ignore[return-value]
 
 
 def add_text_watermark(
@@ -45,6 +45,10 @@ def add_text_watermark(
     ------
     ValueError
         If source and destination paths are the same.
+    FileNotFoundError
+        If the source or destination parent directory does not exist.
+    OSError
+        If PyMuPDF cannot read the source or write the destination.
     """
     src = Path(src)
     dst = Path(dst)
@@ -78,7 +82,7 @@ def add_text_watermark(
                 fontname=opts.font_name,
                 fontsize=opts.font_size,
                 lineheight=opts.lineheight,
-                rotate=opts.rotation,
+                rotate=opts.rotation,  # type: ignore[arg-type]
                 color=opts.color,  # validated to (r,g,b)
                 fill_opacity=opts.opacity,
                 render_mode=0,  # fill text
