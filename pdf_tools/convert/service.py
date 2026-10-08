@@ -8,13 +8,11 @@ helpers accept :class:`pdf_tools.models.files.Files` or a sequence of them.
 
 Supported input types & back-ends
 ---------------------------------
-* **Microsoft Word** (``.doc``/``.docx``) → LibreOffice :mod:`unoconvert` CLI.
+* **Microsoft Word** (``.doc``/``.docx``) → LibreOffice via ``unoconvert``.
 * **Raster images** (``.jpg``/``.jpeg``/``.png``/``.tiff``/``.bmp``) →
-  :mod:`Pillow` + :mod:`img2pdf`.
+  :mod:`Pillow` + PDF Oxide.
 
-Word conversion requires LibreOffice and a working ``unoserver`` listener for
-``unoconvert``. CLI commands manage the listener when needed; direct service
-callers must manage it themselves.
+Word conversion requires LibreOffice and a working ``unoserver`` listener.
 
 Design notes
 ------------
@@ -26,14 +24,13 @@ Design notes
 
 import subprocess
 from collections.abc import Sequence
-from io import BytesIO
 from pathlib import Path
 from typing import Final
 
-import img2pdf  # type: ignore
 import typer
 from PIL import Image
 
+from pdf_tools._pdf_backend import create_pdf_from_image
 from pdf_tools.convert.unoserver_ctx import assert_office_ready
 from pdf_tools.models.files import (
     ConversionBatchResult,
@@ -154,10 +151,10 @@ def convert_word_to_pdf(
     typer.echo(f"Converting {file.path.resolve()}")
     new_path = _resolve_output_path(file, output_path)
 
-    if new_path.exists() and overwrite is False:
-        raise FileExistsError(f"File {new_path} already exists. Exiting.")
     if new_path.is_dir():
         raise ValueError(f"Path {new_path} is a directory.")
+    if new_path.exists() and overwrite is False:
+        raise FileExistsError(f"File {new_path} already exists. Exiting.")
     if new_path.parent.exists() is False:
         raise FileNotFoundError(
             f"Output directory {new_path.parent} does not exist. "
@@ -165,19 +162,16 @@ def convert_word_to_pdf(
         )
     try:
         subprocess.run(
-            [
-                _UNOCONVERT_CMD,
-                str(file.absolute_path),
-                str(new_path),
-            ],
+            [_UNOCONVERT_CMD, str(file.absolute_path), str(new_path)],
             check=True,
             capture_output=True,
         )
-    except subprocess.CalledProcessError as ex:
+    except subprocess.CalledProcessError as exc:
         raise RuntimeError(
             f"LibreOffice failed to convert '{file.path}' → '{new_path}'. "
-            f"Exit code {ex.returncode}. Stderr:\n{ex.stderr.decode()}."
-        ) from ex
+            f"Exit code {exc.returncode}. "
+            f"Stderr:\n{exc.stderr.decode(errors='replace')}."
+        ) from exc
 
     typer.echo(f"Converted {new_path}")
     _file_data = {"path": new_path, "bookmark_name": file.bookmark_name}
@@ -193,9 +187,8 @@ def convert_image_to_pdf(
 
     Pillow opens the source and checks its detected format against the
     supported allowlist. Non-RGB images are converted to RGB, then the image
-    is encoded as PNG in memory. ``img2pdf`` builds the PDF from those PNG
-    bytes. Source bytes are not passed through unchanged: JPEG data may be
-    re-encoded, metadata may be lost, and large images may use extra memory.
+    is encoded as PNG in a temporary file. PDF Oxide builds the PDF from
+    the validated image. JPEG and RGB PNG files use their original paths.
 
     Parameters
     ----------
@@ -248,15 +241,8 @@ def convert_image_to_pdf(
                     f"Supported formats: "
                     f"{', '.join(sorted(SUPPORTED_IMAGE_FORMATS))}."
                 )
-            normalized_image = (
-                image if image.mode == "RGB" else image.convert("RGB")
-            )
-            buffer = BytesIO()
-            normalized_image.save(buffer, format="PNG")
-            with open(new_path, "wb") as pdf:
-                pdf_bytes = img2pdf.convert(buffer.getvalue())
-                pdf.write(pdf_bytes)
-    except (OSError, ValueError) as ex:
+        create_pdf_from_image(file.absolute_path, new_path)
+    except (OSError, ValueError, RuntimeError) as ex:
         raise RuntimeError(
             f"Could not convert image '{file.path}' to PDF: {ex}."
         ) from ex

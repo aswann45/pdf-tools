@@ -25,7 +25,7 @@ class WatermarkOptions(BaseModel):
     font_size : `int`, default 48
         Font size.
     font_name : `str`, default "helv"
-        MuPDF font name. Defaults to "helv", the built-in Helvetica alias.
+        Font name. "helv" remains a Helvetica alias for compatibility.
     lineheight : `float`, default 1.0
         Factor to increase/decrease vertical text spacing.
     rotation : `float`, default 0.0
@@ -55,7 +55,7 @@ class WatermarkOptions(BaseModel):
 
     text: Annotated[str, Field(min_length=1, description="Label to stamp")]
     font_size: Annotated[int, Field(gt=0)] = 48
-    font_name: str = "helv"  # built-in Helvetica alias in MuPDF
+    font_name: str = "helv"
     lineheight: float = Field(
         default=1.0,
         description="Factor to increase/decrease vertical text spacing.",

@@ -7,19 +7,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pypdf import PdfReader, PdfWriter
+from pdf_oxide import PdfDocument
+from reportlab.pdfgen import canvas
 
 from pdf_tools.merge.service import merge_pdfs
 from pdf_tools.models.files import File
 
 
 def _make_blank_pdf(path: Path) -> None:
-    """Create a one-page blank PDF at *path* using pypdf."""
-    writer = PdfWriter()
-    # A minimal 1-pt × 1-pt blank page is enough for tests
-    writer.add_blank_page(width=1, height=1)
-    with path.open("wb") as fh:
-        writer.write(fh)
+    """Create a one-page blank PDF at *path* using ReportLab."""
+    document = canvas.Canvas(str(path), pagesize=(10, 10))
+    document.showPage()
+    document.save()
 
 
 def test_merge_page_count(sample_pdfs: Sequence[File], tmp_path: Path) -> None:
@@ -28,8 +27,8 @@ def test_merge_page_count(sample_pdfs: Sequence[File], tmp_path: Path) -> None:
     merge_pdfs(files=sample_pdfs, output_path=out)
     assert out.exists()
 
-    total_in = sum(len(PdfReader(p.path).pages) for p in sample_pdfs)
-    total_out = len(PdfReader(out).pages)
+    total_in = sum(PdfDocument(str(p.path)).page_count() for p in sample_pdfs)
+    total_out = PdfDocument(str(out)).page_count()
     assert total_in == total_out
 
 

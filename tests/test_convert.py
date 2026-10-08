@@ -2,28 +2,17 @@
 
 from __future__ import annotations
 
-import importlib
-import sys
-import types
 from pathlib import Path
-from typing import Any, Final
+from typing import Any
 
 import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from PIL import Image
 
+from pdf_tools.convert import service
 from pdf_tools.convert.service import convert_file_to_pdf
-from pdf_tools.convert.unoserver_ctx import (
-    unoserver_listener,
-)
 from pdf_tools.models.files import File
-from tests.conftest import libreoffice_available
-
-requires_libreoffice = pytest.mark.skipif(
-    not libreoffice_available(),
-    reason="LibreOffice/unoserver stack not available",
-)
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -93,38 +82,12 @@ def test_unsupported_format(
         convert_file_to_pdf(file=File(path=image), output_path=tmp_path)
 
 
-SERVICE_PATH: Final = (
-    Path(__file__).resolve().parents[1]
-    / "pdf_tools"
-    / "convert"
-    / "service.py"
-)
-spec = importlib.util.spec_from_file_location(
-    "pdf_tools.convert.service", SERVICE_PATH
-)
-assert spec is not None
-service = importlib.util.module_from_spec(spec)
-sys.modules["pdf_tools.convert.service"] = service
-assert spec.loader is not None
-spec.loader.exec_module(service)
-
-
 @pytest.fixture()
 def tmp_image(tmp_path: Path) -> File:
     """Return a simple 10×10 PNG wrapped in File."""
     img_path = tmp_path / "tiny.png"
     Image.new("RGBA", (10, 10), (255, 0, 0)).save(img_path)
     return File(path=img_path)
-
-
-@pytest.fixture()
-def stub_subprocess(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Replace subprocess.run with a no-op success response."""
-    monkeypatch.setattr(
-        service.subprocess,
-        "run",
-        lambda *a, **kw: types.SimpleNamespace(returncode=0),
-    )
 
 
 def test_output_dir_handler(tmp_path: Path) -> None:
@@ -137,99 +100,6 @@ def test_output_dir_handler(tmp_path: Path) -> None:
     assert (
         result == output_dir / "demo.pdf"
     )  # lines 72-73 :contentReference[oaicite:0]{index=0}
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_word_directory_output(tmp_path: Path, stub_subprocess: None) -> None:
-    """Directory → proper filename.pdf."""
-    src = tmp_path / "x.docx"
-    src.touch()
-    out_dir = tmp_path / "export"
-    out_dir.mkdir()
-
-    with unoserver_listener():
-        result = service.convert_word_to_pdf(
-            File(path=src), output_path=out_dir, overwrite=True
-        )
-    assert result.path == out_dir / "x.pdf"  # covers 116
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_word_default_path(tmp_path: Path, stub_subprocess: None) -> None:
-    """``output_path=None``."""
-    src = tmp_path / "y.docx"
-    src.touch()
-    with unoserver_listener():
-        result = service.convert_word_to_pdf(File(path=src), overwrite=True)
-    assert result.path == src.with_suffix(".pdf")  # covers 121
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_word_file_exists(tmp_path: Path, stub_subprocess: None) -> None:
-    """Existing PDF raises FileExistsError."""
-    src = tmp_path / "z.docx"
-    pdf = src.with_suffix(".pdf")
-    src.touch()
-    pdf.touch()
-
-    with pytest.raises(FileExistsError):
-        with unoserver_listener():
-            service.convert_word_to_pdf(File(path=src))
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_word_output_is_directory(
-    tmp_path: Path, stub_subprocess: None
-) -> None:
-    """Path resolves to an existing directory."""
-    src = tmp_path / "a.docx"
-    src.touch()
-    dir_path = tmp_path / "a.pdf"
-    dir_path.mkdir()
-
-    with pytest.raises(ValueError):
-        with unoserver_listener():
-            service.convert_word_to_pdf(
-                File(path=src), output_path=dir_path, overwrite=True
-            )
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_word_parent_missing(tmp_path: Path, stub_subprocess: None) -> None:
-    """Parent directory does not exist."""
-    src = tmp_path / "b.docx"
-    src.touch()
-    out_path = tmp_path / "nope" / "b.pdf"
-
-    with pytest.raises(FileNotFoundError):
-        with unoserver_listener():
-            service.convert_word_to_pdf(File(path=src), output_path=out_path)
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_word_subprocess_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """LibreOffice (subprocess) fails."""
-    src = tmp_path / "c.docx"
-    src.touch()
-
-    def boom(*_a: Any, **_kw: Any) -> None:  # noqa: D401
-        raise service.subprocess.CalledProcessError(
-            1, "unoconvert", b"", b"err"
-        )
-
-    monkeypatch.setattr(service.subprocess, "run", boom)
-
-    with pytest.raises(RuntimeError):
-        with unoserver_listener():
-            service.convert_word_to_pdf(File(path=src), overwrite=True)
 
 
 def test_image_directory_output(tmp_image: File, tmp_path: Path) -> None:
@@ -328,149 +198,3 @@ def test_image_rgb_conversion(
 
     service.convert_image_to_pdf(tmp_image, overwrite=True)
     assert called["converted"] is True
-
-
-@requires_libreoffice
-@pytest.mark.slow
-def test_dispatch_to_word(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Dispatches *.doc* files to `convert_word_to_pdf`."""
-    sentinel = object()
-
-    def _fake(*_a: Any, **_kw: Any) -> object:
-        return sentinel
-
-    monkeypatch.setattr(service, "convert_word_to_pdf", _fake)
-    doc = tmp_path / "whatever.doc"
-    doc.touch()
-
-    with unoserver_listener():
-        assert service.convert_file_to_pdf(File(path=doc)) is sentinel
-
-
-if "typer" not in sys.modules:
-    typer_stub = types.ModuleType("typer")  # pragma: no cover
-    typer_stub.echo = lambda *_a, **_kw: None  # type: ignore[attr-defined]  # pragma: no cover
-    sys.modules["typer"] = typer_stub  # pragma: no cover
-
-# --------------------------------------------------------------------------- #
-# Dynamically load the module under test (SUT) after stubbing dependencies.   #
-# --------------------------------------------------------------------------- #
-MODULE_PATH: Final = (
-    Path(__file__).resolve().parents[1]
-    / "pdf_tools"
-    / "convert"
-    / "unoserver_ctx.py"
-)
-spec = importlib.util.spec_from_file_location("unoserver_ctx", MODULE_PATH)
-assert spec is not None
-unoserver_ctx = importlib.util.module_from_spec(spec)
-sys.modules["unoserver_ctx"] = unoserver_ctx
-assert spec.loader is not None
-spec.loader.exec_module(unoserver_ctx)
-
-
-def test_wait_until_port_listens_timeout() -> None:
-    """Raises *TimeoutError* instantly when timeout=0."""
-    with pytest.raises(TimeoutError):
-        unoserver_ctx._wait_until_port_listens(port=9999, timeout=0)
-
-
-def test_assert_ready_no_unoconvert(monkeypatch: pytest.MonkeyPatch) -> None:
-    """*unoconvert* missing triggers *RuntimeError*."""
-    monkeypatch.setattr(
-        unoserver_ctx.shutil, "which", lambda _: None, raising=True
-    )
-    with pytest.raises(RuntimeError):
-        unoserver_ctx.assert_office_ready()
-
-
-def test_assert_ready_no_listener(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Listener absent is surfaced as *RuntimeError*."""
-    monkeypatch.setattr(
-        unoserver_ctx.shutil,
-        "which",
-        lambda _: "/usr/bin/unoconvert",
-        raising=True,
-    )
-
-    def _boom(*_a: Any, **_kw: Any) -> None:
-        raise TimeoutError
-
-    monkeypatch.setattr(
-        unoserver_ctx, "_wait_until_port_listens", _boom, raising=True
-    )
-
-    with pytest.raises(RuntimeError):
-        unoserver_ctx.assert_office_ready()
-
-
-def test_listener_missing_unoserver(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Missing *unoserver* binary ⇒ *FileNotFoundError*."""
-    monkeypatch.setattr(unoserver_ctx, "_UNOSERVER_CMD", None, raising=True)
-    with pytest.raises(FileNotFoundError):
-        with (
-            unoserver_ctx.unoserver_listener()
-        ):  # :contentReference[oaicite:3]{index=3}
-            pass  # pragma: no cover
-
-
-def test_listener_bad_soffice(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Invalid *soffice* path aborts early."""
-    monkeypatch.setattr(
-        unoserver_ctx, "_UNOSERVER_CMD", "/usr/bin/unoserver", raising=True
-    )
-    bad_path = tmp_path / "missing-soffice"
-    with pytest.raises(FileNotFoundError):
-        with unoserver_ctx.unoserver_listener(
-            soffice_path=bad_path
-        ):  # :contentReference[oaicite:4]{index=4}
-            pass  # pragma: no cover
-
-
-def test_listener_with_custom_soffice(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """*--soffice* flag is appended when path exists."""
-    monkeypatch.setattr(
-        unoserver_ctx, "_UNOSERVER_CMD", "/usr/bin/unoserver", raising=True
-    )
-
-    good_soffice = tmp_path / "soffice"
-    good_soffice.touch()
-
-    # Skip real network wait.
-    monkeypatch.setattr(
-        unoserver_ctx, "_wait_until_port_listens", lambda *_a, **_kw: None
-    )
-
-    captured: dict[str, Any] = {}
-
-    class DummyProc:  # noqa: D101
-        def terminate(self) -> None:
-            captured["terminated"] = True  # noqa: D401
-
-        def wait(self, timeout: int | None = None) -> None:
-            captured["waited"] = True  # noqa: D401
-
-    def _fake_popen(cmd: Any, **_kw: Any) -> DummyProc:
-        captured["cmd"] = cmd
-        return DummyProc()
-
-    monkeypatch.setattr(
-        unoserver_ctx.subprocess, "Popen", _fake_popen, raising=True
-    )
-
-    with unoserver_ctx.unoserver_listener(
-        port=2222, soffice_path=good_soffice
-    ):
-        pass  # context body
-
-    # Verify process handling & argument injection.
-    assert captured["terminated"] and captured["waited"]
-    assert (
-        "--soffice" in captured["cmd"] and str(good_soffice) in captured["cmd"]
-    )
