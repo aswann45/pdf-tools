@@ -149,3 +149,85 @@ poetry run pytest
 ```
 
 The formatting check is `ruff format --check`; `scripts/format` applies formatting on Unix-like systems. Word-conversion tests marked `slow` require LibreOffice and working `uno` bindings.
+
+## PDF extraction
+
+Extraction returns one `PageExtraction` per selected page, with one-based page
+numbers and `native`, `ocr`, or `none` text provenance. The original page text
+is retained; `result.text` joins selected pages with form feeds (`\f`). Embedded
+images stay attached to their source pages in `DocumentExtraction.model_dump_json()`.
+
+```bash
+pdf-tools extract text report.pdf --pages "1-5,9" -o report.txt
+pdf-tools extract images report.pdf --output-dir existing-images/
+pdf-tools extract document report.pdf --output-dir existing-output/ --ocr auto
+```
+
+The image directory must already exist for `extract images`. For `extract
+document`, the output directory must exist; the command creates its `images/`
+child when requested and writes `extraction.json` plus `text.txt` when text is
+enabled. Existing outputs are protected unless `--overwrite` is given. The
+installed PDF Oxide 0.3.78 Python binding returns extracted image bytes as
+PNG and has no `extract_images_to_files` method, so JPEGs are saved as lossless
+PNG rather than preserved as original JPEG bytes.
+
+```python
+from pdf_tools import ExtractionOptions, OcrMode, extract_pdf
+
+result = extract_pdf("report.pdf", ExtractionOptions(ocr=OcrMode.AUTO))
+for page in result.pages:
+    print(page.page_number, page.text_source, page.text)
+```
+
+### Set up OCR
+
+Native text extraction needs no OCR setup. To recognize text in scanned pages,
+install the optional ONNX Runtime dependency and provision three model files.
+Installing the extra alone does **not** install the models. From a local
+checkout, use `python -m pip install -e ".[ocr]"`; for a published release,
+use `python -m pip install "pdf-toolchest[ocr]"`.
+
+On Linux or macOS, this example places the English models in a directory of
+your choice. The model URLs and dictionary setup come from PDF Oxide's
+[Python OCR guide](https://github.com/yfedoseev/pdf_oxide/blob/main/docs/getting-started-python.md#ocr---extracting-text-from-scanned-pdfs).
+Run these commands only when you want to download the models:
+
+```bash
+mkdir -p ocr-models
+curl -fL https://huggingface.co/deepghs/paddleocr/resolve/main/det/ch_PP-OCRv4_det/model.onnx -o ocr-models/det.onnx
+curl -fL https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages/english/rec.onnx -o ocr-models/rec.onnx
+curl -fL https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages/english/dict.txt -o ocr-models/en_dict.txt
+echo " " >> ocr-models/en_dict.txt
+export PDF_OXIDE_MODEL_DIR="$(pwd)/ocr-models"
+pdf-tools extract text scanned.pdf --ocr always -o scanned.txt
+```
+
+Keep `PDF_OXIDE_MODEL_DIR` set when running `pdf-tools` again. The directory
+must contain files named exactly `det.onnx`, `rec.onnx`, and `en_dict.txt`.
+You can instead place them in `~/.cache/pdf_oxide/models`, the default used
+by this package. On Windows, the equivalent PowerShell setup is:
+
+```powershell
+$env:PDF_OXIDE_MODEL_DIR = Join-Path $HOME 'ocr-models'
+New-Item -ItemType Directory -Force $env:PDF_OXIDE_MODEL_DIR | Out-Null
+Invoke-WebRequest 'https://huggingface.co/deepghs/paddleocr/resolve/main/det/ch_PP-OCRv4_det/model.onnx' -OutFile (Join-Path $env:PDF_OXIDE_MODEL_DIR 'det.onnx')
+Invoke-WebRequest 'https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages/english/rec.onnx' -OutFile (Join-Path $env:PDF_OXIDE_MODEL_DIR 'rec.onnx')
+Invoke-WebRequest 'https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages/english/dict.txt' -OutFile (Join-Path $env:PDF_OXIDE_MODEL_DIR 'en_dict.txt')
+Add-Content (Join-Path $env:PDF_OXIDE_MODEL_DIR 'en_dict.txt') ' '
+pdf-tools extract text scanned.pdf --ocr always -o scanned.txt
+```
+
+The optional `onnxruntime` Python package normally supplies the shared
+library on all three platforms; if it cannot be located, set
+`ORT_DYLIB_PATH` to the full path of the ONNX Runtime shared-library file.
+
+Use `--ocr auto` for mixed native/scanned PDFs or `--ocr always` to OCR every
+selected page. Without the runtime or models, `auto` still returns native
+text and records a warning for pages needing OCR; `always` fails with an
+actionable error. Neither import nor routine extraction downloads models.
+
+The fast test suite checks OCR routing with mocks. Real OCR requires the
+optional runtime and model files, so its integration test is skipped unless
+both are available. After setup, run
+`poetry run pytest tests/test_extract.py::test_real_ocr_when_provisioned` to
+verify OCR end to end on your machine.

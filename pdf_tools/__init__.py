@@ -7,12 +7,25 @@ from pdf_tools.convert import (
     convert_word_to_pdf,
     unoserver_listener,
 )
+from pdf_tools.extract import (
+    ExtractionError,
+    OcrUnavailableError,
+    extract_pdf,
+    extract_pdf_images,
+    extract_pdf_text,
+)
 from pdf_tools.merge import merge_pdfs
 from pdf_tools.models import (
     ConversionBatchResult,
+    DocumentExtraction,
+    ExtractedImage,
+    ExtractionOptions,
     File,
     Files,
+    OcrMode,
+    PageExtraction,
     SkippedFile,
+    TextSource,
     WatermarkOptions,
     WatermarkResult,
 )
@@ -20,6 +33,17 @@ from pdf_tools.process import convert_and_merge_pdfs
 from pdf_tools.watermark import add_text_watermark
 
 __all__ = [
+    "DocumentExtraction",
+    "ExtractedImage",
+    "ExtractionOptions",
+    "OcrMode",
+    "PageExtraction",
+    "TextSource",
+    "ExtractionError",
+    "OcrUnavailableError",
+    "extract_pdf",
+    "extract_pdf_images",
+    "extract_pdf_text",
     "ConversionBatchResult",
     "File",
     "Files",

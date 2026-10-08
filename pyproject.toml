@@ -1,6 +1,6 @@
 [project]
 name = "pdf-toolchest"
-version = "0.3.0"
+version = "0.4.0"
 description = "A Swiss-army knife for everyday PDF workflows."
 authors = [
     {name = "Alex"}
@@ -15,6 +15,9 @@ dependencies = [
     "typer (>=0.15.1,<0.16.0)",
     "pdf-oxide (>=0.3.78,<0.4.0)",
 ]
+
+[project.optional-dependencies]
+ocr = ["onnxruntime>=1.20.1"]
 
 [tool.poetry]
 packages = [
