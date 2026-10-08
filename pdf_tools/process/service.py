@@ -48,7 +48,7 @@ def convert_and_merge_pdfs(
         Ordered inputs. Existing PDFs pass through; other inputs are
         converted to temporary PDFs. Failed conversions are omitted without
         a report, so the output may contain fewer documents than requested.
-        Word inputs use direct LibreOffice conversion without a listener.
+        Direct callers must manage a ``unoserver`` listener for Word inputs.
     output_path : str | Path
         Destination PDF path. Its parent directory must already exist.
     set_bookmarks : bool, default ``False``

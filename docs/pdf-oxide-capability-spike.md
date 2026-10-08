@@ -11,8 +11,8 @@ binding. The results below were observed on Linux with Python 3.11.15.
 | PDF merge | Two and six-page merges preserved order and page dimensions | Use `Pdf.merge` when bookmarks are off. |
 | Outline writing | `PdfDocument.get_outline()` reads outlines; no outline writer is exposed | Merge with PDF Oxide, then use pypdf only to write outline entries. |
 | Styled watermark editing | `PdfPage.add_text` accepts text, x, y, and font size only | Keep PyMuPDF for rotation, opacity, color, alignment, and font parity. |
-| DOCX | `OfficeConverter.from_docx` did not complete within 120 seconds on a one-paragraph `python-docx` file; a LibreOffice-produced DOCX also timed out. Version 0.3.74 timed out on the same fixture. | Use direct LibreOffice until native conversion is reliable. |
-| Binary DOC | `OfficeConverter.convert` converted one simple `.doc` file and produced extractable text | Keep LibreOffice for `.doc` pending representative fidelity testing. |
+| DOCX | `OfficeConverter.from_docx` did not complete within 120 seconds on a one-paragraph `python-docx` file; a LibreOffice-produced DOCX also timed out. Version 0.3.74 timed out on the same fixture. | Keep the existing LibreOffice + unoserver path until native conversion is reliable. |
+| Binary DOC | `OfficeConverter.convert` converted one simple `.doc` file and produced extractable text | Keep the existing LibreOffice + unoserver path pending representative fidelity testing. |
 
 The DOCX probe was also run outside the filesystem sandbox and still timed
 out. The same DOCX converted successfully with direct headless LibreOffice.

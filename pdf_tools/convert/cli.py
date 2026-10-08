@@ -7,11 +7,13 @@ Commands
 * ``files-to-pdfs``   – convert an explicit list *or* JSON bundle of paths.
 * ``folder-to-pdfs``  – convert **every** supported file in a directory.
 
-Batch commands report skipped files and succeed if any input converted.
+The CLI starts a temporary ``unoserver`` listener when Word inputs require
+one. Batch commands report skipped files and succeed if any input converted.
 Output parent directories must already exist.
 """
 
 from collections.abc import Sequence
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Annotated
 
@@ -22,9 +24,14 @@ from pdf_tools.convert.service import (
     convert_file_to_pdf,
     convert_files_to_pdfs,
 )
+from pdf_tools.convert.unoserver_ctx import unoserver_listener
 from pdf_tools.models.files import ConversionBatchResult, File, Files
 
 cli = AsyncTyper(no_args_is_help=True)
+
+
+def _requires_office(files: Sequence[File]) -> bool:
+    return any(file.type.lower() in {"doc", "docx"} for file in files)
 
 
 def _echo_batch_result(result: ConversionBatchResult) -> None:
@@ -53,10 +60,16 @@ def file_to_pdf(
     ] = False,
 ) -> File:
     """Convert one document to PDF and output to the same directory."""
-    try:
-        return convert_file_to_pdf(path, overwrite=overwrite_existing)
-    except ValueError as ex:
-        raise typer.BadParameter(str(ex)) from ex
+    context = (
+        unoserver_listener(uno_port=2002)
+        if path.suffix.lower() in {".doc", ".docx"}
+        else nullcontext()
+    )
+    with context:
+        try:
+            return convert_file_to_pdf(path, overwrite=overwrite_existing)
+        except ValueError as ex:
+            raise typer.BadParameter(str(ex)) from ex
 
 
 @cli.command()
@@ -107,11 +120,17 @@ def files_to_pdfs(
     else:
         files = [File.model_validate({"path": p}) for p in file_paths]
 
-    result = convert_files_to_pdfs(
-        files,
-        output_dir=output_dir,
-        overwrite=overwrite_existing,
+    context = (
+        unoserver_listener(uno_port=2002)
+        if _requires_office(files)
+        else nullcontext()
     )
+    with context:
+        result = convert_files_to_pdfs(
+            files,
+            output_dir=output_dir,
+            overwrite=overwrite_existing,
+        )
 
     _echo_batch_result(result)
     if not result.converted:
@@ -147,11 +166,17 @@ def folder_to_pdfs(
     """
     folder = Path(input_dir)
     files = [File.model_validate({"path": file}) for file in folder.iterdir()]
-    result = convert_files_to_pdfs(
-        files,
-        output_dir=output_dir,
-        overwrite=overwrite_existing,
+    context = (
+        unoserver_listener(uno_port=2002)
+        if _requires_office(files)
+        else nullcontext()
     )
+    with context:
+        result = convert_files_to_pdfs(
+            files,
+            output_dir=output_dir,
+            overwrite=overwrite_existing,
+        )
 
     _echo_batch_result(result)
     if not result.converted:

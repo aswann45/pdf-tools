@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
-import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -37,52 +35,6 @@ def create_pdf_from_image(source: Path, destination: Path) -> None:
 def convert_docx_to_pdf(source: Path, destination: Path) -> None:
     """Convert a DOCX using PDF Oxide's Python binding."""
     OfficeConverter.from_docx(str(source)).save(str(destination))
-
-
-def convert_word_with_libreoffice(source: Path, destination: Path) -> None:
-    """Convert Word input through an isolated headless LibreOffice process.
-
-    PDF Oxide 0.3.78 blocks indefinitely on valid DOCX fixtures. This
-    compatibility path keeps Word conversion usable until that is fixed.
-    """
-    command = shutil.which("soffice") or shutil.which("libreoffice")
-    if command is None:
-        raise RuntimeError("LibreOffice is required for Word conversion.")
-
-    with TemporaryDirectory() as directory:
-        temporary = Path(directory)
-        profile = (temporary / "profile").as_uri()
-        output_dir = temporary / "output"
-        output_dir.mkdir()
-        try:
-            result = subprocess.run(
-                [
-                    command,
-                    f"-env:UserInstallation={profile}",
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(output_dir),
-                    str(source),
-                ],
-                check=True,
-                capture_output=True,
-                timeout=120,
-            )
-        except (OSError, subprocess.SubprocessError) as exc:
-            raise RuntimeError(
-                f"LibreOffice failed to convert '{source}' → "
-                f"'{destination}': {exc}."
-            ) from exc
-        generated = output_dir / f"{source.stem}.pdf"
-        if not generated.is_file():
-            raise RuntimeError(
-                f"LibreOffice did not create '{generated}'. "
-                f"Output: {result.stdout.decode(errors='replace')} "
-                f"{result.stderr.decode(errors='replace')}"
-            )
-        shutil.move(str(generated), str(destination))
 
 
 def merge_pdf_files(

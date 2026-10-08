@@ -8,11 +8,11 @@ helpers accept :class:`pdf_tools.models.files.Files` or a sequence of them.
 
 Supported input types & back-ends
 ---------------------------------
-* **Microsoft Word** (``.doc``/``.docx``) → direct headless LibreOffice.
+* **Microsoft Word** (``.doc``/``.docx``) → LibreOffice via ``unoconvert``.
 * **Raster images** (``.jpg``/``.jpeg``/``.png``/``.tiff``/``.bmp``) →
   :mod:`Pillow` + PDF Oxide.
 
-Word conversion requires LibreOffice. It runs directly, without a listener.
+Word conversion requires LibreOffice and a working ``unoserver`` listener.
 
 Design notes
 ------------
@@ -22,16 +22,16 @@ Design notes
   unless ``overwrite=True``.
 """
 
+import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Final
 
 import typer
 from PIL import Image
 
-from pdf_tools._pdf_backend import (
-    convert_word_with_libreoffice,
-    create_pdf_from_image,
-)
+from pdf_tools._pdf_backend import create_pdf_from_image
+from pdf_tools.convert.unoserver_ctx import assert_office_ready
 from pdf_tools.models.files import (
     ConversionBatchResult,
     File,
@@ -56,6 +56,7 @@ SUPPORTED_WORD_FORMATS: set[str] = {"doc", "docx"}
 SUPPORTED_FILE_FORMATS: set[str] = (
     SUPPORTED_IMAGE_FORMATS | SUPPORTED_WORD_FORMATS
 )
+_UNOCONVERT_CMD: Final[str] = "unoconvert"
 
 
 class UnsupportedFileTypeError(ValueError):
@@ -118,12 +119,13 @@ def convert_word_to_pdf(
     ----------
     file : :class:`File` | :class:`str` | :class:`Path`
         A Word document path or :class:`pdf_tools.models.files.File`. This
-        direct helper passes the source to LibreOffice; it does not check
+        direct helper passes the source to ``unoconvert``; it does not check
         the extension. The dispatcher selects it for ``.doc`` and ``.docx``.
     output_path : str | Path | None, optional
         Destination PDF path, or a directory when no suffix is supplied.
         When *None*, replace the source extension with ``.pdf`` beside the
-        input. The output parent directory must exist.
+        input. The output parent directory must exist. Direct callers must
+        provide a running ``unoserver`` listener.
     overwrite : `bool`, default ``False``
         Overwrite output file if it already exists.
 
@@ -138,13 +140,14 @@ def convert_word_to_pdf(
     FileExistsError
         If `overwrite` is False and the output path already exists.
     RuntimeError
-        If LibreOffice is unavailable or conversion fails.
+        If ``unoconvert`` or its listener is unavailable, or conversion fails.
     FileNotFoundError
         If `output_path`'s parent directory does not exist.
     ValueError
         If the resolved output path is a directory.
     """
     file = coerce_file(file)
+    assert_office_ready()
     typer.echo(f"Converting {file.path.resolve()}")
     new_path = _resolve_output_path(file, output_path)
 
@@ -157,7 +160,18 @@ def convert_word_to_pdf(
             f"Output directory {new_path.parent} does not exist. "
             f"Please create it or choose an existing directory."
         )
-    convert_word_with_libreoffice(file.absolute_path, new_path)
+    try:
+        subprocess.run(
+            [_UNOCONVERT_CMD, str(file.absolute_path), str(new_path)],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            f"LibreOffice failed to convert '{file.path}' → '{new_path}'. "
+            f"Exit code {exc.returncode}. "
+            f"Stderr:\n{exc.stderr.decode(errors='replace')}."
+        ) from exc
 
     typer.echo(f"Converted {new_path}")
     _file_data = {"path": new_path, "bookmark_name": file.bookmark_name}
@@ -310,7 +324,7 @@ def convert_files_to_pdfs(
     ConversionBatchResult
         ``converted`` lists successful PDFs; ``skipped`` lists failed inputs
         and their reasons. Both may be populated or empty. The function does
-        not require a Word-conversion listener.
+        not start a Word-conversion listener for direct Python callers.
 
     Raises
     ------
