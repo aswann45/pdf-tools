@@ -7,8 +7,8 @@ The Python package is `pdf-toolchest`; the installed command is `pdf-tools`.
 
 | Operation | Inputs | Behavior |
 | --- | --- | --- |
-| Convert | Images with `.jpg`, `.jpeg`, `.png`, `.tiff`, or `.bmp` extensions; Word `.doc` and `.docx` files | Pillow and img2pdf handle images; LibreOffice with `unoserver` and `unoconvert` handles Word files. Other Pillow-readable formats are not accepted by the dispatcher. |
-| Merge | PDFs | Non-PDF inputs are skipped with a warning. Optional bookmarks use `File.bookmark_name`, falling back to the filename. |
+| Convert | Images with `.jpg`, `.jpeg`, `.png`, `.tiff`, or `.bmp` extensions; Word `.doc` and `.docx` files | Pillow validates images and PDF Oxide creates their PDFs. TIFF, BMP, and non-RGB images are normalized to PNG first. Word files currently use direct headless LibreOffice. |
+| Merge | PDFs | PDF Oxide merges PDFs. Non-PDF inputs are skipped with a warning. Optional bookmarks use `File.bookmark_name`, falling back to the filename. Bookmarked merges temporarily use pypdf. |
 | Process | Supported conversion inputs and existing PDFs | Converts what it can, then merges the successful conversions and existing PDFs. |
 | Watermark | PDF | Adds text with PyMuPDF. Rotation must be a multiple of 90 degrees. |
 
@@ -19,13 +19,13 @@ pip install pdf-toolchest
 pdf-tools --help
 ```
 
-Word conversion requires LibreOffice and the `unoserver`/`unoconvert` integration. The `unoserver` installation must be able to import LibreOffice's `uno` module. For many Linux setups:
+Word conversion currently requires a `soffice` or `libreoffice` executable on `PATH`. No UNO listener or `unoconvert` installation is needed. PDF Oxide 0.3.78's Python DOCX converter did not complete on valid test files, so direct LibreOffice conversion preserves Word support until that is resolved.
 
 ```bash
-pipx install unoserver --system-site-packages
+soffice --version
 ```
 
-CLI commands that encounter Word inputs start and stop the required listener automatically. You do not need to start one manually for normal CLI use.
+CLI and Python calls invoke LibreOffice directly when a Word file is converted.
 
 ## CLI quick start
 
@@ -101,16 +101,15 @@ print(result.converted)
 print(result.skipped)
 ```
 
-Direct Python service calls do not start a Word-conversion listener. Manage that resource around calls involving `.doc` or `.docx`, for example:
+Direct Python service calls need no listener:
 
 ```python
-from pdf_tools import convert_and_merge_pdfs, unoserver_listener
+from pdf_tools import convert_and_merge_pdfs
 
-with unoserver_listener():
-    convert_and_merge_pdfs(
-        files=["doc1.docx", "pic.jpg", "appendix.pdf"],
-        output_path="package.pdf",
-    )
+convert_and_merge_pdfs(
+    files=["doc1.docx", "pic.jpg", "appendix.pdf"],
+    output_path="package.pdf",
+)
 ```
 
 ## Architecture
@@ -118,7 +117,10 @@ with unoserver_listener():
 - **Models:** Pydantic v2 models describe inputs, options, and results.
 - **Services:** Synchronous Python functions perform conversion, merging, processing, and watermarking.
 - **CLI:** Typer commands parse arguments, print results, and manage CLI-specific resources.
-- **External tools:** LibreOffice and `unoserver`/`unoconvert` perform Word conversion.
+- **PDF backend:** PDF Oxide creates image PDFs and merges PDFs without bookmarks. pypdf remains for merge bookmarks, and PyMuPDF remains for styled watermarks because the pinned PDF Oxide Python binding lacks equivalent writing controls.
+- **External tools:** Direct headless LibreOffice performs `.doc` and `.docx` conversion during the DOCX compatibility gap.
+
+`unoserver_listener` remains importable as a deprecated no-op context manager for existing callers. It will be removed during the later public API overhaul.
 
 CLI setup and resource behavior can differ from direct service-layer calls.
 
