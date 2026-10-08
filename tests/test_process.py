@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from pdf_oxide import PdfDocument
 from PIL import Image
-from pypdf import PdfReader
 
 from pdf_tools.process import convert_and_merge_pdfs
 from tests.conftest import make_pdf
@@ -25,7 +25,7 @@ def test_convert_and_merge_accepts_paths_and_existing_pdfs(
     result = convert_and_merge_pdfs([pdf, str(image)], output_path=out)
 
     assert result.path == out
-    assert len(PdfReader(out).pages) == 3
+    assert PdfDocument(str(out)).page_count() == 3
 
 
 def test_process_merges_successes_after_conversion_failure(
@@ -42,7 +42,7 @@ def test_process_merges_successes_after_conversion_failure(
 
     convert_and_merge_pdfs([existing, unsupported, image], output_path=output)
 
-    assert len(PdfReader(output).pages) == 3
+    assert PdfDocument(str(output)).page_count() == 3
 
 
 def test_process_requires_existing_output_parent(tmp_path: Path) -> None:

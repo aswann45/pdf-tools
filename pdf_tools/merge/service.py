@@ -2,7 +2,7 @@
 High-level PDF *merge* operations used by both the CLI and programmatic API.
 
 Only one public helper is exposed—:func:`merge_pdfs`.  It provides a minimal
-yet robust wrapper around :class:`pypdf.PdfWriter` so that downstream layers
+yet robust wrapper around the private PDF backend so that downstream layers
 can merge an arbitrary sequence of :class:`pdf_tools.models.files.File`
 objects without fiddling with low-level writer mechanics or conditional
 bookmark logic.
@@ -31,8 +31,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import typer
-from pypdf import PdfWriter
 
+from pdf_tools._pdf_backend import merge_pdf_files
 from pdf_tools.models.files import File, FilesInput, coerce_files
 
 __all__ = [
@@ -102,7 +102,8 @@ def merge_pdfs(
     'pdf'
     """
     output_path = Path(output_path)
-    merger = PdfWriter()
+    sources: list[Path] = []
+    bookmarks: list[str] = []
     normalized_files: Sequence[File] = coerce_files(files)
     for file in normalized_files:
         if file.type.lower() != "pdf":
@@ -110,13 +111,8 @@ def merge_pdfs(
                 f"Skipping {file.path.resolve()} because it is not a PDF"
             )
             continue
-        if set_bookmarks:
-            merger.append(
-                str(file.absolute_path),
-                outline_item=file.bookmark_name or file.name,
-            )
-        else:
-            merger.append(str(file.absolute_path))
+        sources.append(file.absolute_path)
+        bookmarks.append(file.bookmark_name or file.name)
 
     if output_path.exists() and overwrite is False:
         raise FileExistsError(f"File {output_path} already exists. Exiting.")
@@ -125,9 +121,10 @@ def merge_pdfs(
             f"Output directory {output_path.parent} does not exist. "
             f"Please create it or choose an existing directory."
         )
-    with open(output_path, "wb") as output:
-        merger.write(output)
-
-    merger.close()
+    merge_pdf_files(
+        sources,
+        output_path,
+        bookmarks if set_bookmarks else None,
+    )
 
     return File.model_validate({"path": output_path})

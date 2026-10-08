@@ -4,13 +4,11 @@ Typer commands for batch PDF processing.
 Typer command that **converts** a batch of files to PDF *and then merges* them
 into a single document.
 
-Inputs may be supplied directly or as a JSON bundle. The CLI starts a
-temporary ``unoserver`` listener if any Word input is present. The process
-service is best-effort and can silently omit inputs that fail conversion.
+Inputs may be supplied directly or as a JSON bundle. The process service
+is best-effort and can silently omit inputs that fail conversion.
 """
 
 from collections.abc import Sequence
-from contextlib import nullcontext
 from pathlib import Path
 from typing import Annotated
 
@@ -18,17 +16,12 @@ import typer
 from pydantic import ValidationError
 
 from pdf_tools.cli import AsyncTyper
-from pdf_tools.convert.unoserver_ctx import unoserver_listener
 from pdf_tools.models.files import File, Files
 from pdf_tools.process.service import (
     convert_and_merge_pdfs as _convert_and_merge_pdfs,
 )
 
 cli = AsyncTyper(no_args_is_help=True)
-
-
-def _requires_office(files: Sequence[File]) -> bool:
-    return any(file.type.lower() in {"doc", "docx"} for file in files)
 
 
 @cli.command()
@@ -98,13 +91,7 @@ def convert_and_merge_pdfs(
         raise ValueError("Either file_paths or json_file must be provided")
     else:
         files = [File.model_validate({"path": p}) for p in file_paths]
-    context = (
-        unoserver_listener(uno_port=2002)
-        if _requires_office(files)
-        else nullcontext()
+    _convert_and_merge_pdfs(
+        files, output_path, set_bookmarks, overwrite=overwrite_existing
     )
-    with context:
-        _convert_and_merge_pdfs(
-            files, output_path, set_bookmarks, overwrite=overwrite_existing
-        )
     typer.echo(f"Merged PDFs to {output_path.resolve()}")

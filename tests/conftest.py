@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 import pytest
@@ -18,18 +17,6 @@ def make_pdf(path: Path, pages: int = 1) -> None:  # pragma: no cover
         c.drawString(72, 720, f"Page {i + 1}")
         c.showPage()
     c.save()
-
-
-def libreoffice_available() -> bool:  # noqa: D401
-    """Return True if a LibreOffice CLI tool is on $PATH."""
-    return (
-        shutil.which("unoconvert") is not None
-        and shutil.which("unoserver") is not None
-        and (
-            shutil.which("soffice") is not None
-            or shutil.which("libreoffice") is not None
-        )
-    )  # pragma: nocover
 
 
 @pytest.fixture(scope="function")

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pypdf import PdfReader
+from pdf_oxide import PdfDocument
 
 from pdf_tools.models.watermark import WatermarkOptions
 from pdf_tools.watermark.service import add_text_watermark
@@ -22,7 +22,11 @@ def test_watermark_first_page(tmp_path: Path) -> None:
     result = add_text_watermark(src=src, dst=dst, opts=opts)
 
     assert result.pages_processed == 1
-    assert len(PdfReader(dst).pages) == 3
+    output = PdfDocument(str(dst))
+    assert output.page_count() == 3
+    assert "TEST" in output.extract_text(0)
+    assert "TEST" not in output.extract_text(1)
+    assert "TEST" not in output.extract_text(2)
     assert result.message == (
         f"Added watermark on {result.pages_processed} page(s) → "
         f"{result.output.path}"
