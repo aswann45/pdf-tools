@@ -83,6 +83,9 @@ def test_merge_bookmark_compatibility(tmp_path: Path) -> None:
         source = tmp_path / f"source-{index}.pdf"
         fixture = canvas.Canvas(str(source))
         fixture.drawString(20, 100, str(index))
+        if index == 0:
+            fixture.showPage()
+            fixture.drawString(20, 100, "second page")
         fixture.save()
         sources.append(
             File(path=source, bookmark_name=name if index == 0 else None)
@@ -94,5 +97,5 @@ def test_merge_bookmark_compatibility(tmp_path: Path) -> None:
 
     assert outline == [
         {"title": "Résumé", "page": 0, "children": []},
-        {"title": "source-1.pdf", "page": 1, "children": []},
+        {"title": "source-1.pdf", "page": 2, "children": []},
     ]

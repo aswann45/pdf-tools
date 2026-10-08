@@ -90,26 +90,36 @@ def merge_pdf_files(
     destination: Path,
     bookmark_names: Sequence[str] | None = None,
 ) -> None:
-    """Merge PDFs, retaining the outline writer for requested bookmarks.
+    """Merge PDFs and add requested bookmarks with the outline writer.
 
     PDF Oxide 0.3.78's Python binding has no outline-writing method.
-    Remove the compatibility branch when it gains one.
+    Remove the pypdf branch when it gains one.
     """
-    if sources and bookmark_names is None:
+    if not sources:
+        writer = PdfWriter()
+        try:
+            writer.write(str(destination))
+        finally:
+            writer.close()
+        return
+
+    if bookmark_names is None:
         Pdf.merge([str(source) for source in sources]).save(str(destination))
         return
 
-    writer = PdfWriter()
-    try:
-        if bookmark_names is None:
-            writer.write(str(destination))
-            return
-        for source, name in zip(sources, bookmark_names, strict=True):
-            writer.append(str(source), outline_item=name)
-        with destination.open("wb") as output:
-            writer.write(output)
-    finally:
-        writer.close()
+    with TemporaryDirectory() as directory:
+        merged = Path(directory) / "merged.pdf"
+        Pdf.merge([str(source) for source in sources]).save(str(merged))
+        writer = PdfWriter(clone_from=str(merged))
+        try:
+            first_page = 0
+            for source, name in zip(sources, bookmark_names, strict=True):
+                writer.add_outline_item(name, first_page)
+                first_page += get_pdf_page_count(source)
+            with destination.open("wb") as output:
+                writer.write(output)
+        finally:
+            writer.close()
 
 
 def get_pdf_page_count(source: Path) -> int:

@@ -8,7 +8,7 @@ The Python package is `pdf-toolchest`; the installed command is `pdf-tools`.
 | Operation | Inputs | Behavior |
 | --- | --- | --- |
 | Convert | Images with `.jpg`, `.jpeg`, `.png`, `.tiff`, or `.bmp` extensions; Word `.doc` and `.docx` files | Pillow validates images and PDF Oxide creates their PDFs. TIFF, BMP, and non-RGB images are normalized to PNG first. Word files currently use direct headless LibreOffice. |
-| Merge | PDFs | PDF Oxide merges PDFs. Non-PDF inputs are skipped with a warning. Optional bookmarks use `File.bookmark_name`, falling back to the filename. Bookmarked merges temporarily use pypdf. |
+| Merge | PDFs | PDF Oxide merges PDFs. Non-PDF inputs are skipped with a warning. Optional bookmarks use `File.bookmark_name`, falling back to the filename. pypdf temporarily writes the outline entries. |
 | Process | Supported conversion inputs and existing PDFs | Converts what it can, then merges the successful conversions and existing PDFs. |
 | Watermark | PDF | Adds text with PyMuPDF. Rotation must be a multiple of 90 degrees. |
 
@@ -117,7 +117,7 @@ convert_and_merge_pdfs(
 - **Models:** Pydantic v2 models describe inputs, options, and results.
 - **Services:** Synchronous Python functions perform conversion, merging, processing, and watermarking.
 - **CLI:** Typer commands parse arguments, print results, and manage CLI-specific resources.
-- **PDF backend:** PDF Oxide creates image PDFs and merges PDFs without bookmarks. pypdf remains for merge bookmarks, and PyMuPDF remains for styled watermarks because the pinned PDF Oxide Python binding lacks equivalent writing controls.
+- **PDF backend:** PDF Oxide creates image PDFs and merges PDFs. pypdf remains for merge outline entries, and PyMuPDF remains for styled watermarks because the pinned PDF Oxide Python binding lacks equivalent writing controls.
 - **External tools:** Direct headless LibreOffice performs `.doc` and `.docx` conversion during the DOCX compatibility gap.
 
 `unoserver_listener` remains importable as a deprecated no-op context manager for existing callers. It will be removed during the later public API overhaul.
