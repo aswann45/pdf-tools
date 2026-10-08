@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pdf_oxide import OfficeConverter, Pdf, PdfDocument
+from pdf_oxide import Pdf, PdfDocument
 from PIL import Image
 from pypdf import PdfWriter
 
@@ -30,11 +30,6 @@ def create_pdf_from_image(source: Path, destination: Path) -> None:
             normalized = Path(directory) / "image.png"
             image.convert("RGB").save(normalized, format="PNG")
             Pdf.from_image(str(normalized)).save(str(destination))
-
-
-def convert_docx_to_pdf(source: Path, destination: Path) -> None:
-    """Convert a DOCX using PDF Oxide's Python binding."""
-    OfficeConverter.from_docx(str(source)).save(str(destination))
 
 
 def merge_pdf_files(
