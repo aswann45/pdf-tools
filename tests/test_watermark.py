@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pymupdf
 import pytest
 from pdf_oxide import PdfDocument
 
@@ -57,3 +58,84 @@ def test_watermark_accepts_pathlike_inputs(tmp_path: Path) -> None:
 
     assert result.output.path == dst
     assert dst.exists()
+
+
+def test_watermark_all_pages_and_style(tmp_path: Path) -> None:
+    """Text, color, size, and opacity survive the output save."""
+    source = tmp_path / "source.pdf"
+    destination = tmp_path / "destination.pdf"
+    make_pdf(source, pages=2)
+    options = WatermarkOptions(
+        text="DRAFT",
+        all_pages=True,
+        color="#00FF00",
+        font_size=36,
+        opacity=0.4,
+        x=200,
+        y=300,
+        h_align="left",
+    )
+
+    result = add_text_watermark(src=source, dst=destination, opts=options)
+
+    assert result.pages_processed == 2
+    document = PdfDocument(str(destination))
+    for page_number in range(2):
+        spans = [
+            span
+            for span in document.extract_spans(page_number)
+            if span.text == "DRAFT"
+        ]
+        assert len(spans) == 1
+        assert spans[0].color == pytest.approx((0.0, 1.0, 0.0))
+        assert spans[0].font_size == pytest.approx(36.0)
+        assert spans[0].bbox[0] == pytest.approx(200 - 250, abs=2)
+
+    with pymupdf.open(destination) as styled:
+        trace = styled[0].get_texttrace()
+        watermark = next(
+            item
+            for item in trace
+            if "".join(chr(char[0]) for char in item["chars"]) == "DRAFT"
+        )
+        assert watermark["opacity"] == pytest.approx(0.4)
+
+
+@pytest.mark.parametrize(
+    ("rotation", "direction"),
+    [
+        (0, (1.0, 0.0)),
+        (90, (0.0, -1.0)),
+        (180, (-1.0, 0.0)),
+        (270, (0.0, 1.0)),
+    ],
+)
+def test_watermark_rotation(
+    tmp_path: Path, rotation: int, direction: tuple[float, float]
+) -> None:
+    """All supported right-angle rotations affect written text."""
+    source = tmp_path / "source.pdf"
+    destination = tmp_path / "destination.pdf"
+    make_pdf(source)
+
+    add_text_watermark(
+        src=source,
+        dst=destination,
+        opts=WatermarkOptions(
+            text="AX",
+            rotation=rotation,
+            x=200,
+            y=300,
+            box_width=300,
+            box_height=100,
+        ),
+    )
+
+    with pymupdf.open(destination) as styled:
+        trace = styled[0].get_texttrace()
+        watermark = next(
+            item
+            for item in trace
+            if "".join(chr(char[0]) for char in item["chars"]) == "AX"
+        )
+        assert watermark["dir"] == pytest.approx(direction)
