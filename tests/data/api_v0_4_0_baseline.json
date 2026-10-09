@@ -1,0 +1,119 @@
+{
+  "version": "0.4.0",
+  "exports": [
+    "DocumentExtraction",
+    "ExtractedImage",
+    "ExtractionOptions",
+    "OcrMode",
+    "PageExtraction",
+    "TextSource",
+    "ExtractionError",
+    "OcrUnavailableError",
+    "extract_pdf",
+    "extract_pdf_images",
+    "extract_pdf_text",
+    "ConversionBatchResult",
+    "File",
+    "Files",
+    "SkippedFile",
+    "UnsupportedFileTypeError",
+    "WatermarkOptions",
+    "WatermarkResult",
+    "add_text_watermark",
+    "convert_and_merge_pdfs",
+    "convert_file_to_pdf",
+    "convert_files_to_pdfs",
+    "convert_folder_to_pdfs",
+    "convert_image_to_pdf",
+    "convert_word_to_pdf",
+    "merge_pdfs",
+    "unoserver_listener"
+  ],
+  "service_signatures": {
+    "convert_word_to_pdf": "(file: pdf_tools.models.files.File | str | pathlib.Path, output_path: str | pathlib.Path | None = None, overwrite: bool = False) -> pdf_tools.models.files.File",
+    "convert_image_to_pdf": "(file: pdf_tools.models.files.File | str | pathlib.Path, output_path: str | pathlib.Path | None = None, overwrite: bool = False) -> pdf_tools.models.files.File",
+    "convert_file_to_pdf": "(file: pdf_tools.models.files.File | str | pathlib.Path, output_path: str | pathlib.Path | None = None, overwrite: bool = False) -> pdf_tools.models.files.File",
+    "convert_files_to_pdfs": "(files: pdf_tools.models.files.Files | collections.abc.Sequence[pdf_tools.models.files.File | str | pathlib.Path], output_dir: str | pathlib.Path | None = None, overwrite: bool = False) -> pdf_tools.models.files.ConversionBatchResult",
+    "convert_folder_to_pdfs": "(input_dir: str | pathlib.Path, output_dir: str | pathlib.Path | None = None, overwrite: bool = False) -> pdf_tools.models.files.ConversionBatchResult",
+    "merge_pdfs": "(files: pdf_tools.models.files.Files | collections.abc.Sequence[pdf_tools.models.files.File | str | pathlib.Path], output_path: str | pathlib.Path, set_bookmarks: bool = False, overwrite: bool = False) -> pdf_tools.models.files.File",
+    "convert_and_merge_pdfs": "(files: pdf_tools.models.files.Files | collections.abc.Sequence[pdf_tools.models.files.File | str | pathlib.Path], output_path: str | pathlib.Path, set_bookmarks: bool = False, overwrite: bool = False) -> pdf_tools.models.files.File",
+    "add_text_watermark": "(*, src: 'str | Path', dst: 'str | Path', opts: 'WatermarkOptions') -> 'WatermarkResult'",
+    "extract_pdf": "(source: pdf_tools.models.files.File | str | pathlib.Path, options: pdf_tools.models.extraction.ExtractionOptions | None = None, *, image_output_dir: str | pathlib.Path | None = None, overwrite: bool = False) -> pdf_tools.models.extraction.DocumentExtraction",
+    "extract_pdf_text": "(source: pdf_tools.models.files.File | str | pathlib.Path, *, ocr: pdf_tools.models.extraction.OcrMode = <OcrMode.NEVER: 'never'>, pages: collections.abc.Sequence[int] | None = None) -> pdf_tools.models.extraction.DocumentExtraction",
+    "extract_pdf_images": "(source: pdf_tools.models.files.File | str | pathlib.Path, output_dir: str | pathlib.Path, *, pages: collections.abc.Sequence[int] | None = None, overwrite: bool = False) -> pdf_tools.models.extraction.DocumentExtraction"
+  },
+  "commit": "121ab41f777bb7ba97ee09a89e4063ac2347c9a4",
+  "return_annotations": {
+    "convert_word_to_pdf": "<class 'pdf_tools.models.files.File'>",
+    "convert_image_to_pdf": "<class 'pdf_tools.models.files.File'>",
+    "convert_file_to_pdf": "<class 'pdf_tools.models.files.File'>",
+    "convert_files_to_pdfs": "<class 'pdf_tools.models.files.ConversionBatchResult'>",
+    "convert_folder_to_pdfs": "<class 'pdf_tools.models.files.ConversionBatchResult'>",
+    "merge_pdfs": "<class 'pdf_tools.models.files.File'>",
+    "convert_and_merge_pdfs": "<class 'pdf_tools.models.files.File'>",
+    "add_text_watermark": "'WatermarkResult'",
+    "extract_pdf": "<class 'pdf_tools.models.extraction.DocumentExtraction'>",
+    "extract_pdf_text": "<class 'pdf_tools.models.extraction.DocumentExtraction'>",
+    "extract_pdf_images": "<class 'pdf_tools.models.extraction.DocumentExtraction'>"
+  },
+  "function_modules": {
+    "convert_word_to_pdf": "pdf_tools.convert.service",
+    "convert_image_to_pdf": "pdf_tools.convert.service",
+    "convert_file_to_pdf": "pdf_tools.convert.service",
+    "convert_files_to_pdfs": "pdf_tools.convert.service",
+    "convert_folder_to_pdfs": "pdf_tools.convert.service",
+    "merge_pdfs": "pdf_tools.merge.service",
+    "convert_and_merge_pdfs": "pdf_tools.process.service",
+    "add_text_watermark": "pdf_tools.watermark.service",
+    "extract_pdf": "pdf_tools.extract.service",
+    "extract_pdf_text": "pdf_tools.extract.service",
+    "extract_pdf_images": "pdf_tools.extract.service"
+  },
+  "module_exports": {
+    "pdf_tools.convert": [
+      "UnsupportedFileTypeError",
+      "convert_file_to_pdf",
+      "convert_files_to_pdfs",
+      "convert_folder_to_pdfs",
+      "convert_image_to_pdf",
+      "convert_word_to_pdf",
+      "unoserver_listener"
+    ],
+    "pdf_tools.merge": [
+      "merge_pdfs"
+    ],
+    "pdf_tools.process": [
+      "convert_and_merge_pdfs"
+    ],
+    "pdf_tools.watermark": [
+      "WatermarkOptions",
+      "WatermarkResult",
+      "add_text_watermark"
+    ],
+    "pdf_tools.extract": [
+      "ExtractionError",
+      "OcrUnavailableError",
+      "extract_pdf",
+      "extract_pdf_images",
+      "extract_pdf_text"
+    ],
+    "pdf_tools.models": [
+      "DocumentExtraction",
+      "ExtractedImage",
+      "ExtractionOptions",
+      "OcrMode",
+      "PageExtraction",
+      "TextSource",
+      "ConversionBatchResult",
+      "File",
+      "FileInput",
+      "Files",
+      "FilesInput",
+      "SkippedFile",
+      "WatermarkOptions",
+      "WatermarkResult",
+      "coerce_file",
+      "coerce_files"
+    ]
+  }
+}

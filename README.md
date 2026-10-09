@@ -63,7 +63,22 @@ Batch conversion continues after an individual input fails. `convert files-to-pd
 
 ## Python API
 
-Common APIs are exported from `pdf_tools`. Their accepted input types vary by operation:
+The root package supports both module-level functions and the stateless
+`PDFTools()` class. Every class method has the same parameters, return model,
+exceptions, and filesystem effects as the function with the same name.
+Calls are synchronous. Component imports such as
+`from pdf_tools.merge import merge_pdfs` and service-level imports remain
+supported. `FileInput` and `FilesInput` are also available from `pdf_tools`.
+
+| Operation | Function and `PDFTools` method | Result |
+| --- | --- | --- |
+| Convert one file | `convert_word_to_pdf`, `convert_image_to_pdf`, `convert_file_to_pdf` | `File` |
+| Convert a batch | `convert_files_to_pdfs`, `convert_folder_to_pdfs` | `ConversionBatchResult` |
+| Merge | `merge_pdfs`, `convert_and_merge_pdfs` | `File` |
+| Watermark | `add_text_watermark` | `WatermarkResult` |
+| Extract | `extract_pdf`, `extract_pdf_text`, `extract_pdf_images` | `DocumentExtraction` |
+
+Accepted input types vary by operation:
 
 | Operation | Accepted input types |
 | --- | --- |
@@ -75,11 +90,20 @@ Common APIs are exported from `pdf_tools`. Their accepted input types vary by op
 
 The destination's parent directory must exist for single-file conversion, merging, and processing. Single-file conversion and merging raise `FileNotFoundError` for a missing output parent. Batch conversion records that error in `ConversionBatchResult.skipped` for each affected input. Processing raises `FileNotFoundError` at merge time if at least one input was retained; if none were retained, it raises `ValueError` instead.
 
+For example, the two interfaces can convert, merge, watermark, and extract
+the same documents. These examples assume the input files exist and output
+parent directories have been created:
+
 ```python
 from pathlib import Path
-from pdf_tools import WatermarkOptions, add_text_watermark, convert_file_to_pdf, merge_pdfs
+from pdf_tools import (
+    PDFTools, ExtractionOptions, OcrMode, WatermarkOptions,
+    add_text_watermark, convert_file_to_pdf, extract_pdf,
+    extract_pdf_text, merge_pdfs,
+)
 
 Path("out").mkdir(exist_ok=True)
+# Functional API
 img_pdf = convert_file_to_pdf("diagram.png", output_path=Path("out"))
 merged = merge_pdfs(["intro.pdf", img_pdf.path], output_path="bundle.pdf", set_bookmarks=True)
 add_text_watermark(
@@ -87,7 +111,27 @@ add_text_watermark(
     dst="bundle_wm.pdf",
     opts=WatermarkOptions(text="CONFIDENTIAL", font_size=36, all_pages=False),
 )
+text = extract_pdf_text(merged.path, ocr=OcrMode.NEVER)
+pages = extract_pdf(merged.path, ExtractionOptions(pages=[1]))
+
+# Class API: identical contracts and Pydantic result models
+tools = PDFTools()
+img_pdf_2 = tools.convert_file_to_pdf("diagram.png", output_path="out/diagram-2.pdf")
+merged_2 = tools.merge_pdfs(["intro.pdf", img_pdf_2.path], "bundle-2.pdf")
+tools.add_text_watermark(
+    src=merged_2.path,
+    dst="bundle-2-wm.pdf",
+    opts=WatermarkOptions(text="CONFIDENTIAL"),
+)
+text_2 = tools.extract_pdf_text(merged_2.path, ocr=OcrMode.NEVER)
+pages_2 = tools.extract_pdf(merged_2.path, ExtractionOptions(pages=[1]))
 ```
+
+Both APIs return the same Pydantic models and propagate the same service
+exceptions, including `UnsupportedFileTypeError`, `ExtractionError`, and
+`OcrUnavailableError`. Neither interface silently creates missing output
+parent directories. OCR still requires the optional runtime and models
+described under [Set up OCR](#set-up-ocr).
 
 Batch conversion returns `ConversionBatchResult`: `converted` contains `File` models for successful PDFs; `skipped` contains each failed input path and its reason. It continues after a failed input and can return both lists populated.
 
@@ -101,16 +145,18 @@ print(result.converted)
 print(result.skipped)
 ```
 
-Direct Python service calls involving Word files need a listener:
+Direct Python calls involving Word files need a caller-managed listener.
+Constructing `PDFTools()` does not start or probe LibreOffice or `unoserver`:
 
 ```python
-from pdf_tools import convert_and_merge_pdfs, unoserver_listener
+from pdf_tools import PDFTools, convert_and_merge_pdfs, unoserver_listener
 
 with unoserver_listener():
     convert_and_merge_pdfs(
         files=["doc1.docx", "pic.jpg", "appendix.pdf"],
         output_path="package.pdf",
     )
+    converted = PDFTools().convert_word_to_pdf("document.docx")
 ```
 
 ## Architecture
